@@ -186,6 +186,9 @@ a{color:var(--accent);text-decoration:none}
 .badge-validado{background:#10b98135;color:#6ee7b7;border-color:#10b98155}
 .badge-aguardando{background:#f59e0b35;color:#fde68a;border-color:#f59e0b55}
 .badge-recusado{background:#ef444435;color:#fecaca;border-color:#ef444455}
+.badge-transito{background:#7c3aed35;color:#ddd6fe;border-color:#7c3aed55}
+.badge-cartorio{background:#9a3412 55;color:#fed7aa;border-color:#ea580c55;background:#ea580c35}
+.badge-protestada{background:#7f1d1d55;color:#fca5a5;border-color:#dc262655;font-weight:900}
 .tbl-actions{display:flex;gap:6px;flex-wrap:wrap}
 .pagination{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
 .page-btns{display:flex;gap:4px}
@@ -459,9 +462,12 @@ select.filter:focus{outline:none;border-color:var(--accent)}
             <select class="filter" id="filtStatus" onchange="filterNotas()">
               <option value="">Todos os status</option>
               <option value="PAGO">Pago</option>
-              <option value="VENCIDA">Vencida</option>
               <option value="A VENCER">A Vencer</option>
               <option value="PRÓXIMO VENCIMENTO">Próximo Vencimento</option>
+              <option value="VENCIDA">Vencida</option>
+              <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+              <option value="EM CARTÓRIO">Em Cartório</option>
+              <option value="PROTESTADA">Protestada</option>
             </select>
             <select class="filter" id="filtFornecedor" onchange="filterNotas()">
               <option value="">Todos fornecedores</option>
@@ -520,7 +526,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         </div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>#</th><th>Nome</th><th>CNPJ</th><th>Juros (%)</th><th>Multa (%)</th><th>Protesto (dias)</th><th>Ações</th></tr></thead>
+            <thead><tr><th>#</th><th>Nome</th><th>CNPJ</th><th>Juros (%)</th><th>Multa (%)</th><th>Protesta?</th><th>Trânsito (dias)</th><th>Ações</th></tr></thead>
             <tbody id="tbodyForn"></tbody>
           </table>
         </div>
@@ -577,6 +583,24 @@ select.filter:focus{outline:none;border-color:var(--accent)}
           </div>
         </div>
 
+        <div class="chart-card" style="cursor:pointer" onclick="gerarRelatorio('cartorio')">
+          <div style="font-size:32px;margin-bottom:12px">⚖️</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px">Cartório / Protestadas</div>
+          <div style="color:var(--muted);font-size:13px">Parcelas em trânsito, em cartório ou efetivamente protestadas</div>
+          <div style="margin-top:12px">
+            <select class="filter" id="relCartorioStatus" onclick="event.stopPropagation()" style="width:100%">
+              <option value="">Todos (trânsito + cartório + protestada)</option>
+              <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+              <option value="EM CARTÓRIO">Em Cartório</option>
+              <option value="PROTESTADA">Protestada</option>
+            </select>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioXLS('cartorio')">📥 XLS</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioPDF('cartorio')">📄 PDF</button>
+          </div>
+        </div>
+
         <!-- NOVO: Vencimentos por Período -->
         <div class="chart-card" style="grid-column:span 2">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -598,10 +622,14 @@ select.filter:focus{outline:none;border-color:var(--accent)}
             <div>
               <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Status</label>
               <select id="relVencStatus" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px">
-                <option value="">Todos</option>
+                <option value="">Todos os status</option>
+                <option value="PAGO">Pago</option>
                 <option value="A VENCER">A Vencer</option>
-                <option value="VENCIDA">Vencida</option>
                 <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
+                <option value="VENCIDA">Vencida</option>
+                <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+                <option value="EM CARTÓRIO">Em Cartório</option>
+                <option value="PROTESTADA">Protestada</option>
               </select>
             </div>
             <button class="btn btn-primary" onclick="gerarRelatorio('vencPeriodo')" style="height:38px">🔍 Gerar</button>
@@ -814,7 +842,20 @@ select.filter:focus{outline:none;border-color:var(--accent)}
       <div class="form-grid cols3">
         <div class="form-group"><label>Juros (%)</label><input type="number" id="fJuros" placeholder="0" step="0.01"></div>
         <div class="form-group"><label>Multa (%)</label><input type="number" id="fMulta" placeholder="0" step="0.01"></div>
-        <div class="form-group"><label>Protesto (dias)</label><input type="number" id="fProtesto" placeholder="0"></div>
+        <div class="form-group">
+          <label>Protesta títulos?</label>
+          <select id="fProtesta">
+            <option value="nao">Não protesta</option>
+            <option value="sim">Sim — protesta</option>
+          </select>
+        </div>
+        <div class="form-group" id="fProtestoDiasGrp">
+          <label>Dias após vencimento para trânsito</label>
+          <input type="number" id="fProtesto" placeholder="Ex: 5" min="1" max="90">
+        </div>
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);grid-column:span 2">
+          📋 O sistema marcará automaticamente como <strong>Trânsito de Cartório</strong> as parcelas vencidas há mais dias que o prazo acima. Após o envio manual ao cartório, altere o status para <strong>Em Cartório</strong>; após o protesto ser efetivado, para <strong>Protestada</strong>.
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1181,28 +1222,55 @@ function today() { return new Date().toISOString().slice(0,10); }
 function calcStatus(nf) {
   const now = new Date(); now.setHours(0,0,0,0);
   const em15 = new Date(now); em15.setDate(em15.getDate()+15);
-  let allPago=true, anyVencida=false, anyProximo=false;
+  let allPago=true, anyProtestada=false, anyCartorio=false, anyTransito=false, anyVencida=false, anyProximo=false;
+  // Busca dados do fornecedor para saber dias de protesto
+  const forn = fornecedores.find(f=>f.nome===nf.fornecedor)||{};
+  const diasProtesto = parseInt(forn.protesto)||0;
   for(const p of (nf.parcelas||[])) {
     if(!p.vencimento) continue;
     const v = new Date(p.vencimento); v.setHours(0,0,0,0);
-    const pago = String(p.situacao||'').toUpperCase()==='PAGO';
+    const sit = String(p.situacao||'').toUpperCase().trim();
+    const pago = sit==='PAGO';
     if(!pago) {
       allPago=false;
-      if(v < now) anyVencida=true;
+      if(sit==='PROTESTADA')          anyProtestada=true;
+      else if(sit==='EM CARTÓRIO')    anyCartorio=true;
+      else if(sit==='TRÂNSITO DE CARTÓRIO') anyTransito=true;
+      else if(v < now) {
+        // Calcula trânsito automático com base nos dias de protesto do fornecedor
+        if(diasProtesto>0) {
+          const diasAtraso = Math.floor((now-v)/(1000*60*60*24));
+          if(diasAtraso >= diasProtesto) anyTransito=true;
+          else anyVencida=true;
+        } else {
+          anyVencida=true;
+        }
+      }
       else if(v >= now && v <= em15) anyProximo=true;
     }
   }
-  if(allPago) return 'PAGO';
-  if(anyVencida) return 'VENCIDA';
-  if(anyProximo) return 'PRÓXIMO VENCIMENTO';
+  if(allPago)         return 'PAGO';
+  if(anyProtestada)   return 'PROTESTADA';
+  if(anyCartorio)     return 'EM CARTÓRIO';
+  if(anyTransito)     return 'TRÂNSITO DE CARTÓRIO';
+  if(anyVencida)      return 'VENCIDA';
+  if(anyProximo)      return 'PRÓXIMO VENCIMENTO';
   return 'A VENCER';
 }
 function statusBadge(s) {
   const m = {
-    'PAGO':'badge-pago','VENCIDA':'badge-vencida','A VENCER':'badge-avencer',
-    'PRÓXIMO VENCIMENTO':'badge-proximo','PENDENTE':'badge-pendente'
+    'PAGO':'badge-pago',
+    'VENCIDA':'badge-vencida',
+    'A VENCER':'badge-avencer',
+    'PRÓXIMO VENCIMENTO':'badge-proximo',
+    'PENDENTE':'badge-pendente',
+    'TRÂNSITO DE CARTÓRIO':'badge-transito',
+    'EM CARTÓRIO':'badge-cartorio',
+    'PROTESTADA':'badge-protestada'
   };
-  return `<span class="badge ${m[s]||'badge-avencer'}">${s||'—'}</span>`;
+  const key = String(s||'').toUpperCase().trim();
+  const cls = m[key] || 'badge-avencer';
+  return `<span class="badge ${cls}">${s||'—'}</span>`;
 }
 function validBadge(s) {
   s = String(s||'');
@@ -1263,8 +1331,11 @@ function gerarCamposParcelas() {
         <select id="parc${i}_sit">
           <option value="A VENCER">A Vencer</option>
           <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
-          <option value="PAGO">Pago</option>
           <option value="VENCIDA">Vencida</option>
+          <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+          <option value="EM CARTÓRIO">Em Cartório</option>
+          <option value="PROTESTADA">Protestada</option>
+          <option value="PAGO">Pago</option>
         </select>
       </div>
     </div></div>`;
@@ -1282,7 +1353,7 @@ function gerarCamposParcelasXML() {
       <div class="form-group"><label>Vencimento *</label><input type="date" id="xparc${i}_venc"></div>
       <div class="form-group"><label>Valor (R$) *</label><input type="text" id="xparc${i}_val" value="${valParcela}"></div>
       <div class="form-group"><label>Situação</label>
-        <select id="xparc${i}_sit"><option>A VENCER</option><option>PRÓXIMO VENCIMENTO</option><option>PAGO</option><option>VENCIDA</option></select>
+        <select id="xparc${i}_sit"><option>A VENCER</option><option>PRÓXIMO VENCIMENTO</option><option>VENCIDA</option><option>TRÂNSITO DE CARTÓRIO</option><option>EM CARTÓRIO</option><option>PROTESTADA</option><option>PAGO</option></select>
       </div>
     </div></div>`;
   }
@@ -1588,7 +1659,14 @@ function verDetalheNF(id) {
       <td>${p.dataPagamento?fmtDate(p.dataPagamento):'—'}</td>
       <td>${p.valorPago?fmtMoney(parseMoney(p.valorPago)):'—'}</td>
       <td>${statusBadge(p.situacao||'A VENCER')}</td>
-      <td>${canEdit()&&p.situacao!=='PAGO'?`<button class="btn btn-success btn-sm" onclick="abrirBaixar('${id}',${i})">💰 Baixar</button>`:''}</td>
+      <td>
+        <div class="tbl-actions">
+          ${p.situacao!=='PAGO'?`
+            <button class="btn btn-success btn-sm" onclick="abrirBaixar('${id}',${i})">💰 Baixar</button>
+            <button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${id}',${i})" title="Editar data/status">✏️</button>
+          `:''}
+        </div>
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('detalheNFTitle').textContent=`NF #${nf.numero} — ${nf.fornecedor}`;
@@ -1777,7 +1855,8 @@ function renderFornecedoresTable() {
     <td style="font-family:monospace;font-size:12px">${f.cnpj}</td>
     <td>${f.juros||'—'}</td>
     <td>${f.multa||'—'}</td>
-    <td>${f.protesto||'—'}</td>
+    <td>${f.protesta==='sim'?'<span class="badge badge-recusado">SIM</span>':'<span class="badge badge-pago">NÃO</span>'}</td>
+    <td>${f.protesta==='sim'?(f.protesto||'—')+' dias':'—'}</td>
     <td>
       <div class="tbl-actions">
         <button class="btn btn-ghost btn-sm" onclick="editarFornecedor(${f.id})">✏️</button>
@@ -1793,7 +1872,7 @@ async function salvarFornecedor() {
   const existing=fornecedores.find(f=>f.cnpj===cnpj&&f.nome===nome);
   if(existing){alert('Fornecedor já cadastrado.');return;}
 
-  const forn = {nome,cnpj,juros:parseFloat(document.getElementById('fJuros').value)||0,multa:parseFloat(document.getElementById('fMulta').value)||0,protesto:parseInt(document.getElementById('fProtesto').value)||0};
+  const forn = {nome,cnpj,juros:parseFloat(document.getElementById('fJuros').value)||0,multa:parseFloat(document.getElementById('fMulta').value)||0,protesta:document.getElementById('fProtesta').value,protesto:parseInt(document.getElementById('fProtesto').value)||0};
   const res = await apiCall('salvarFornecedor', { fornecedor: JSON.stringify(forn) });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
 
@@ -1809,7 +1888,9 @@ function editarFornecedor(id){
   document.getElementById('fCNPJ').value=f.cnpj;
   document.getElementById('fJuros').value=f.juros||'';
   document.getElementById('fMulta').value=f.multa||'';
+  document.getElementById('fProtesta').value=f.protesta||'nao';
   document.getElementById('fProtesto').value=f.protesto||'';
+  toggleProtestaDias();
   openModal('modalFornecedor');
   const btnSave = document.querySelector('#modalFornecedor .btn-primary');
   const origSave=btnSave.onclick;
@@ -1956,13 +2037,22 @@ function renderDashboard() {
     });
   });
 
+  let countTransito=0, countCartorio=0, countProtestada=0;
+  filtered.forEach(n=>{
+    const st=calcStatus(n);
+    if(st==='TRÂNSITO DE CARTÓRIO') countTransito++;
+    else if(st==='EM CARTÓRIO')     countCartorio++;
+    else if(st==='PROTESTADA')      countProtestada++;
+  });
   const kpis=[
     {label:'Total de NFs',value:filtered.length,sub:`${yr==='all'?'Todos os anos':yr}`,cls:''},
     {label:'Valor Total',value:fmtMoney(totalValor),sub:'emitido',cls:''},
     {label:'Pago',value:fmtMoney(totalPago),sub:`${countPago} notas quitadas`,cls:'green'},
     {label:'Vencidas',value:fmtMoney(totalVencido),sub:`${parcelaVencidas.length} parcelas`,cls:'red'},
     {label:'Próx. Vencimento',value:fmtMoney(totalProximo),sub:`${parcelaProximas.length} parcelas (≤15 dias)`,cls:'yellow'},
-    {label:'Aguardando Aprovação',value:filtered.filter(n=>n.validacao==='AGUARDANDO VALIDAÇÃO').length,sub:'NFs pendentes',cls:'orange'},
+    {label:'Trânsito de Cartório',value:countTransito,sub:'em trânsito',cls:'orange'},
+    {label:'Em Cartório / Protestada',value:countCartorio+countProtestada,sub:`${countCartorio} cartório · ${countProtestada} protestadas`,cls:'red'},
+    {label:'Aguardando Aprovação',value:filtered.filter(n=>(n.validacao||'').includes('AGUARDANDO')).length,sub:'NFs pendentes',cls:'orange'},
   ];
   document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`
     <div class="kpi ${k.cls}">
@@ -2000,6 +2090,17 @@ function renderDashboard() {
   const fornTop=Object.entries(fornMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
   renderChart('chartForn','bar',fornTop.map(x=>x[0]),fornTop.map(x=>x[1]),['#f97316'],true,true);
 
+  // Coleta parcelas em trânsito/cartório/protestadas para alertas
+  const parcelasCartorio=[];
+  filtered.forEach(nf=>{
+    (nf.parcelas||[]).forEach((p,i)=>{
+      const sit=String(p.situacao||'').toUpperCase();
+      if(sit==='TRÂNSITO DE CARTÓRIO'||sit==='EM CARTÓRIO'||sit==='PROTESTADA'){
+        parcelasCartorio.push({nf,p,idx:i+1,sit});
+      }
+    });
+  });
+
   // Alertas
   const alertSec=document.getElementById('alertasSection');
   let alertHTML='';
@@ -2027,6 +2128,22 @@ function renderDashboard() {
         <td><button class="btn btn-success btn-sm" onclick="abrirBaixar('${nf.id}',${i})">💰 Baixar</button></td>
       </tr>`).join('')}</tbody></table></div></div>`;
   }
+  if(parcelasCartorio.length){
+    const bgMap={'TRÂNSITO DE CARTÓRIO':'#7c3aed','EM CARTÓRIO':'#ea580c','PROTESTADA':'#dc2626'};
+    const icons={'TRÂNSITO DE CARTÓRIO':'⚖️','EM CARTÓRIO':'🏛️','PROTESTADA':'🚨'};
+    alertHTML+=`<div class="alert-section">
+      <div class="alert-header" style="background:#7c3aed;color:#fff">⚖️ CARTÓRIO / PROTESTADAS — ${parcelasCartorio.length} parcelas</div>
+      <div class="alert-table" style="overflow-x:auto">
+      <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead>
+      <tbody>${parcelasCartorio.map(({nf,p,idx,sit})=>`<tr>
+        <td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td>
+        <td>${fmtDate(p.vencimento)}</td>
+        <td>${fmtMoney(parseMoney(p.valor))}</td>
+        <td>${statusBadge(p.situacao)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${nf.id}',${idx-1})">✏️ Editar</button></td>
+      </tr>`).join('')}</tbody></table></div></div>`;
+  }
+
   alertSec.innerHTML=alertHTML;
 }
 
@@ -2098,7 +2215,49 @@ function buildPDFHTML(titulo,data) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulo}</title>
   <style>body{font-family:Arial;font-size:12px;color:#000}h1{font-size:16px;margin-bottom:8px}p{font-size:11px;color:#666;margin-bottom:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f0f0f0;font-weight:bold}tr:nth-child(even){background:#f9f9f9}@media print{body{margin:0}}</style>
   </head><body><h1>${titulo}</h1><p>Gerado em ${new Date().toLocaleString('pt-BR')} | Total: ${data.length} notas</p>
-  <table><thead><tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Validação</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  <table><thead><tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Validação</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+<!-- MODAL EDITAR PARCELA -->
+<div class="modal-overlay" id="modalEditarParcela">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="editarParcelaTitle">Editar Parcela</div>
+      <button class="modal-close" onclick="closeModal('modalEditarParcela')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="editarParcelaInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nova Data de Vencimento</label>
+          <input type="date" id="epVencimento">
+        </div>
+        <div class="form-group">
+          <label>Status da Parcela</label>
+          <select id="epStatus">
+            <option value="A VENCER">A Vencer</option>
+            <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
+            <option value="VENCIDA">Vencida</option>
+            <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+            <option value="EM CARTÓRIO">Em Cartório</option>
+            <option value="PROTESTADA">Protestada</option>
+            <option value="PAGO">Pago</option>
+          </select>
+        </div>
+      </div>
+      <div id="epCartorioInfo" style="display:none" class="notice notice-warn">
+        ⚖️ Ao marcar como <strong>Em Cartório</strong> ou <strong>Protestada</strong>, o sistema registra que esta parcela foi encaminhada/efetivada no cartório. Informe a nova data de vencimento conforme intimação recebida.
+      </div>
+      <div class="form-group" style="margin-top:8px">
+        <label>Observação</label>
+        <input type="text" id="epObs" placeholder="Ex: Notificação recebida em 10/06/2026, prazo até 20/06">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditarParcela')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarEditarParcela()">💾 Salvar alteração</button>
+    </div>
+  </div>
+</div>
+</body></html>`;
 }
 
 // RELATÓRIOS
@@ -2147,6 +2306,18 @@ function getRelatorioData(tipo) {
     }));
     return rows.sort((a,b)=>a.p.vencimento.localeCompare(b.p.vencimento));
   }
+  if(tipo==='cartorio'){
+    const filtSit=(document.getElementById('relCartorioStatus').value||'').toUpperCase();
+    const rows=[];
+    notas.forEach(nf=>(nf.parcelas||[]).forEach((p,i)=>{
+      const sit=String(p.situacao||'').toUpperCase();
+      const isCartorio = sit==='TRÂNSITO DE CARTÓRIO'||sit==='EM CARTÓRIO'||sit==='PROTESTADA';
+      if(!isCartorio) return;
+      if(filtSit && sit!==filtSit) return;
+      rows.push({nf,p,idx:i+1});
+    }));
+    return rows.sort((a,b)=>String(a.p.situacao).localeCompare(String(b.p.situacao)));
+  }
   if(tipo==='fornecedor'){
     const fn=document.getElementById('relFornecedor').value;
     return notas.filter(n=>!fn||n.fornecedor===fn);
@@ -2156,10 +2327,10 @@ function getRelatorioData(tipo) {
 
 function gerarRelatorioXLS(tipo) {
   const data=getRelatorioData(tipo);
-  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período'};
+  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas'};
   if(!data.length){alert('Nenhum dado para exportar.');return;}
   let rows;
-  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'){
+  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
     rows=data.map(({nf,p,idx})=>({Nº_NF:nf.numero,Fornecedor:nf.fornecedor,CNPJ:nf.cnpj,Parcela:idx,Vencimento:fmtDate(p.vencimento),Valor:parseMoney(p.valor),Situacao:p.situacao,Conta:nf.conta}));
   } else {
     rows=data.map(n=>({Nº_NF:n.numero,Data_Fat:fmtDate(n.dataFat),Fornecedor:n.fornecedor,Valor_Total:parseMoney(n.valorTotal),Conta:n.conta,Status:calcStatus(n),Validacao:n.validacao}));
@@ -2173,11 +2344,53 @@ function gerarRelatorioXLS(tipo) {
 function gerarRelatorioPDF(tipo) {
   const data=getRelatorioData(tipo);
   if(!data.length){alert('Nenhum dado para exportar.');return;}
-  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período'};
+  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas'};
   let rows;
-  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'){
+  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
     rows=data.map(({nf,p,idx})=>`<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta}</td></tr>`).join('');
-    const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulos[tipo]}</title><style>body{font-family:Arial;font-size:12px}h1{font-size:16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}th{background:#f0f0f0}@media print{body{margin:0}}</style></head><body><h1>${titulos[tipo]}</h1><p>Gerado: ${new Date().toLocaleString('pt-BR')} | ${data.length} parcelas</p><table><thead><tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+    const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulos[tipo]}</title><style>body{font-family:Arial;font-size:12px}h1{font-size:16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}th{background:#f0f0f0}@media print{body{margin:0}}</style></head><body><h1>${titulos[tipo]}</h1><p>Gerado: ${new Date().toLocaleString('pt-BR')} | ${data.length} parcelas</p><table><thead><tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th></tr></thead><tbody>${rows}</tbody></table>
+<!-- MODAL EDITAR PARCELA -->
+<div class="modal-overlay" id="modalEditarParcela">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="editarParcelaTitle">Editar Parcela</div>
+      <button class="modal-close" onclick="closeModal('modalEditarParcela')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="editarParcelaInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nova Data de Vencimento</label>
+          <input type="date" id="epVencimento">
+        </div>
+        <div class="form-group">
+          <label>Status da Parcela</label>
+          <select id="epStatus">
+            <option value="A VENCER">A Vencer</option>
+            <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
+            <option value="VENCIDA">Vencida</option>
+            <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+            <option value="EM CARTÓRIO">Em Cartório</option>
+            <option value="PROTESTADA">Protestada</option>
+            <option value="PAGO">Pago</option>
+          </select>
+        </div>
+      </div>
+      <div id="epCartorioInfo" style="display:none" class="notice notice-warn">
+        ⚖️ Ao marcar como <strong>Em Cartório</strong> ou <strong>Protestada</strong>, o sistema registra que esta parcela foi encaminhada/efetivada no cartório. Informe a nova data de vencimento conforme intimação recebida.
+      </div>
+      <div class="form-group" style="margin-top:8px">
+        <label>Observação</label>
+        <input type="text" id="epObs" placeholder="Ex: Notificação recebida em 10/06/2026, prazo até 20/06">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditarParcela')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarEditarParcela()">💾 Salvar alteração</button>
+    </div>
+  </div>
+</div>
+</body></html>`;
     const w=window.open('','_blank');w.document.write(h);w.document.close();w.print();
   } else {
     const html=buildPDFHTML(titulos[tipo],data);
@@ -2187,13 +2400,13 @@ function gerarRelatorioPDF(tipo) {
 
 function gerarRelatorio(tipo) {
   const data=getRelatorioData(tipo);
-  const titulos={vencidas:'🔴 Parcelas Vencidas',proximos:'🟡 Próximo Vencimento',periodo:'📅 Por Período de Faturamento',fornecedor:'🏢 Por Fornecedor',vencPeriodo:'📆 Vencimentos por Período'};
+  const titulos={vencidas:'🔴 Parcelas Vencidas',proximos:'🟡 Próximo Vencimento',periodo:'📅 Por Período de Faturamento',fornecedor:'🏢 Por Fornecedor',vencPeriodo:'📆 Vencimentos por Período',cartorio:'⚖️ Cartório / Protestadas'};
   const res=document.getElementById('relResultado');
   if(!data.length){res.innerHTML=`<div class="notice notice-info">Nenhum dado encontrado para este filtro.</div>`;return;}
   let html=`<div class="table-wrap"><div class="table-toolbar" style="justify-content:space-between"><div style="font-weight:700">${titulos[tipo]} — ${data.length} registros</div>
   <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('${tipo}')">📥 XLS</button><button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('${tipo}')">📄 PDF</button></div></div>
   <div style="overflow-x:auto"><table class="tbl"><thead>`;
-  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'){
+  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
     html+=`<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr></thead><tbody>`;
     html+=data.map(({nf,p,idx})=>`<tr><td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta||'—'}</td><td>${statusBadge(p.situacao||'A VENCER')}</td></tr>`).join('');
   } else {
@@ -2222,6 +2435,114 @@ window.onload=()=>{
     mostrarTela('configScreen');
   }
 };
+
+// ====================================================
+// EDITAR PARCELA (data de vencimento + status)
+// ====================================================
+let editarParcelaTarget = null;
+
+function abrirEditarParcela(nfId, idx) {
+  const nf = notas.find(x=>x.id===nfId);
+  if(!nf) return;
+  const p = nf.parcelas[idx];
+  editarParcelaTarget = {nfId, idx};
+  document.getElementById('editarParcelaTitle').textContent = `Editar Parcela ${idx+1} — NF #${nf.numero}`;
+  document.getElementById('editarParcelaInfo').innerHTML =
+    `<strong>${nf.fornecedor}</strong> | Parcela ${idx+1} | Venc. atual: <strong>${fmtDate(p.vencimento)}</strong> | Valor: <strong>${fmtMoney(parseMoney(p.valor))}</strong> | Status: ${statusBadge(p.situacao)}`;
+  document.getElementById('epVencimento').value = p.vencimento||'';
+  document.getElementById('epStatus').value = p.situacao||'A VENCER';
+  document.getElementById('epObs').value = '';
+  toggleCartorioInfo();
+  openModal('modalEditarParcela');
+}
+
+function toggleCartorioInfo() {
+  const st = document.getElementById('epStatus').value;
+  const show = st==='EM CARTÓRIO'||st==='PROTESTADA'||st==='TRÂNSITO DE CARTÓRIO';
+  document.getElementById('epCartorioInfo').style.display = show ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const el = document.getElementById('epStatus');
+  if(el) el.addEventListener('change', toggleCartorioInfo);
+});
+
+async function confirmarEditarParcela() {
+  if(!editarParcelaTarget) return;
+  const novoVenc   = document.getElementById('epVencimento').value;
+  const novoStatus = document.getElementById('epStatus').value;
+  const obs        = document.getElementById('epObs').value;
+  if(!novoVenc) { alert('Informe a data de vencimento.'); return; }
+
+  const nf = notas.find(x=>x.id===editarParcelaTarget.nfId);
+  const idx = editarParcelaTarget.idx;
+
+  const res = await apiCall('editarParcela', {
+    numero: nf.numero,
+    ano: nf.ano,
+    parcIdx: idx,
+    vencimento: novoVenc,
+    situacao: novoStatus,
+    obs: obs
+  });
+  if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
+  await reloadNotas();
+  closeModal('modalEditarParcela');
+  closeModal('modalDetalheNF');
+  renderNotas();
+  if(currentUser.role==='admin') renderDashboard();
+  setTimeout(()=>verDetalheNF(editarParcelaTarget.nfId),100);
+}
+
+// ====================================================
+// TOGGLE PROTESTA DIAS (modal fornecedor)
+// ====================================================
+function toggleProtestaDias() {
+  const v = document.getElementById('fProtesta').value;
+  const grp = document.getElementById('fProtestoDiasGrp');
+  if(grp) grp.style.display = v==='sim' ? 'block' : 'none';
+}
 </script>
+
+<!-- MODAL EDITAR PARCELA -->
+<div class="modal-overlay" id="modalEditarParcela">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="editarParcelaTitle">Editar Parcela</div>
+      <button class="modal-close" onclick="closeModal('modalEditarParcela')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="editarParcelaInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nova Data de Vencimento</label>
+          <input type="date" id="epVencimento">
+        </div>
+        <div class="form-group">
+          <label>Status da Parcela</label>
+          <select id="epStatus">
+            <option value="A VENCER">A Vencer</option>
+            <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
+            <option value="VENCIDA">Vencida</option>
+            <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+            <option value="EM CARTÓRIO">Em Cartório</option>
+            <option value="PROTESTADA">Protestada</option>
+            <option value="PAGO">Pago</option>
+          </select>
+        </div>
+      </div>
+      <div id="epCartorioInfo" style="display:none" class="notice notice-warn">
+        ⚖️ Ao marcar como <strong>Em Cartório</strong> ou <strong>Protestada</strong>, o sistema registra que esta parcela foi encaminhada/efetivada no cartório. Informe a nova data de vencimento conforme intimação recebida.
+      </div>
+      <div class="form-group" style="margin-top:8px">
+        <label>Observação</label>
+        <input type="text" id="epObs" placeholder="Ex: Notificação recebida em 10/06/2026, prazo até 20/06">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditarParcela')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarEditarParcela()">💾 Salvar alteração</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
