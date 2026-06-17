@@ -526,7 +526,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         </div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>#</th><th>Nome</th><th>CNPJ</th><th>Juros (%)</th><th>Multa (%)</th><th>Protesta?</th><th>Trânsito (dias)</th><th>Ações</th></tr></thead>
+            <thead><tr><th>#</th><th>Nome</th><th>CNPJ</th><th>Protesta?</th><th>Trânsito (dias)</th><th>Ações</th></tr></thead>
             <tbody id="tbodyForn"></tbody>
           </table>
         </div>
@@ -811,16 +811,44 @@ select.filter:focus{outline:none;border-color:var(--accent)}
 
 <!-- MODAL BAIXAR PARCELA -->
 <div class="modal-overlay" id="modalBaixar">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <div class="modal-title">Baixar Parcela</div>
+      <div class="modal-title">💰 Baixar Parcela</div>
       <button class="modal-close" onclick="closeModal('modalBaixar')">✕</button>
     </div>
     <div class="modal-body">
-      <div id="baixarInfo" style="margin-bottom:16px;font-size:13px;color:var(--muted)"></div>
-      <div class="form-group"><label>Data de Pagamento *</label><input type="date" id="baixarData"></div>
-      <div class="form-group"><label>Valor Pago (R$) *</label><input type="text" id="baixarValor"></div>
-      <div class="form-group"><label>Observação</label><input type="text" id="baixarObs" placeholder="Opcional"></div>
+      <div id="baixarInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div class="form-group">
+        <label>Data de Pagamento *</label>
+        <input type="date" id="baixarData">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Valor Original (R$)</label>
+          <input type="text" id="baixarValorOriginal" placeholder="0,00" readonly
+            style="opacity:.7;cursor:not-allowed">
+        </div>
+        <div class="form-group">
+          <label>Valor Pago (R$) *</label>
+          <input type="text" id="baixarValor" placeholder="0,00" oninput="calcularAcrescimos()">
+        </div>
+        <div class="form-group">
+          <label>Juros pagos (R$)</label>
+          <input type="text" id="baixarJuros" placeholder="0,00" oninput="calcularAcrescimos()">
+        </div>
+        <div class="form-group">
+          <label>Multa paga (R$)</label>
+          <input type="text" id="baixarMulta" placeholder="0,00" oninput="calcularAcrescimos()">
+        </div>
+      </div>
+      <div id="baixarTotalLine" style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;justify-content:space-between;margin-bottom:12px">
+        <span style="color:var(--muted)">Total efetivamente pago:</span>
+        <span id="baixarTotalValor" style="font-weight:700;color:#6ee7b7">R$ 0,00</span>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <input type="text" id="baixarObs" placeholder="Opcional — ex: pago com desconto negociado">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalBaixar')">Cancelar</button>
@@ -839,22 +867,27 @@ select.filter:focus{outline:none;border-color:var(--accent)}
     <div class="modal-body">
       <div class="form-group"><label>Nome *</label><input type="text" id="fNome" placeholder="Nome do fornecedor"></div>
       <div class="form-group"><label>CNPJ *</label><input type="text" id="fCNPJ" placeholder="00.000.000/0000-00"></div>
-      <div class="form-grid cols3">
-        <div class="form-group"><label>Juros (%)</label><input type="number" id="fJuros" placeholder="0" step="0.01"></div>
-        <div class="form-group"><label>Multa (%)</label><input type="number" id="fMulta" placeholder="0" step="0.01"></div>
+
+      <div class="form-group">
+        <label>Protesta títulos?</label>
+        <select id="fProtesta" onchange="toggleProtestaDias()">
+          <option value="nao">Não protesta</option>
+          <option value="sim">Sim — envia a cartório</option>
+        </select>
+      </div>
+
+      <div id="fProtestoDiasGrp" style="display:none">
         <div class="form-group">
-          <label>Protesta títulos?</label>
-          <select id="fProtesta">
-            <option value="nao">Não protesta</option>
-            <option value="sim">Sim — protesta</option>
-          </select>
+          <label>Dias após vencimento para Trânsito de Cartório</label>
+          <input type="number" id="fProtesto" placeholder="Ex: 5" min="1" max="90"
+            style="max-width:180px">
+          <div style="font-size:11px;color:var(--muted);margin-top:5px">
+            Parcelas vencidas há mais de <strong id="fProtestoDiasLabel">0</strong> dias entrarão automaticamente como <strong>Trânsito de Cartório</strong>.
+          </div>
         </div>
-        <div class="form-group" id="fProtestoDiasGrp">
-          <label>Dias após vencimento para trânsito</label>
-          <input type="number" id="fProtesto" placeholder="Ex: 5" min="1" max="90">
-        </div>
-        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);grid-column:span 2">
-          📋 O sistema marcará automaticamente como <strong>Trânsito de Cartório</strong> as parcelas vencidas há mais dias que o prazo acima. Após o envio manual ao cartório, altere o status para <strong>Em Cartório</strong>; após o protesto ser efetivado, para <strong>Protestada</strong>.
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--muted);line-height:1.6">
+          ⚖️ <strong style="color:var(--text)">Fluxo automático:</strong><br>
+          Vencida → <span style="color:#ddd6fe">Trânsito de Cartório</span> (após X dias) → <span style="color:#fed7aa">Em Cartório</span> (manual) → <span style="color:#fca5a5">Protestada</span> (manual)
         </div>
       </div>
     </div>
@@ -978,12 +1011,21 @@ function trocarPlanilha() {
 // ====================================================
 async function loadData() {
   setSyncBadge('sync');
-  const [resNotas, resForn] = await Promise.all([
+  const promises = [
     apiCall('listarNotas', {}),
     apiCall('listarFornecedores', {})
-  ]);
+  ];
+  if (currentUser && currentUser.role === 'admin') {
+    promises.push(apiCall('listarAcrescimos', {}));
+  }
+  const results = await Promise.all(promises);
+  const [resNotas, resForn] = results;
   notas = resNotas.ok ? resNotas.notas : [];
   fornecedores = resForn.ok ? resForn.fornecedores : [];
+  if (results[2] && results[2].ok) {
+    window._totalJurosGAS = results[2].totalJuros || 0;
+    window._totalMultaGAS = results[2].totalMulta || 0;
+  }
   normalizarNotas();
   setSyncBadge(resNotas.ok && resForn.ok ? 'ok' : 'erro');
 }
@@ -1704,21 +1746,40 @@ function abrirBaixar(nfId, idx) {
   baixarTarget={nfId,idx};
   const nf=notas.find(x=>x.id===nfId);
   const p=nf.parcelas[idx];
-  document.getElementById('baixarInfo').innerHTML=`<strong>NF #${nf.numero}</strong> — ${nf.fornecedor}<br>Parcela ${idx+1} | Vencimento: ${fmtDate(p.vencimento)} | Valor: ${fmtMoney(parseMoney(p.valor))}`;
+  const valorOriginal = String(p.valor||'').replace('.',',');
+  document.getElementById('baixarInfo').innerHTML=
+    `<strong>NF #${nf.numero}</strong> — ${nf.fornecedor}<br>
+     Parcela ${idx+1} | Vencimento: <strong>${fmtDate(p.vencimento)}</strong> | Valor original: <strong>${fmtMoney(parseMoney(p.valor))}</strong>`;
   document.getElementById('baixarData').value=today();
-  document.getElementById('baixarValor').value=String(p.valor||'').replace('.',',');
+  document.getElementById('baixarValorOriginal').value=valorOriginal;
+  document.getElementById('baixarValor').value=valorOriginal;
+  document.getElementById('baixarJuros').value='';
+  document.getElementById('baixarMulta').value='';
   document.getElementById('baixarObs').value='';
+  calcularAcrescimos();
   openModal('modalBaixar');
+}
+
+function calcularAcrescimos() {
+  const v = parseMoney(document.getElementById('baixarValor').value||'0');
+  const j = parseMoney(document.getElementById('baixarJuros').value||'0');
+  const m = parseMoney(document.getElementById('baixarMulta').value||'0');
+  const total = v + j + m;
+  document.getElementById('baixarTotalValor').textContent = fmtMoney(total);
 }
 async function confirmarBaixar() {
   const data=document.getElementById('baixarData').value;
   const valor=document.getElementById('baixarValor').value;
+  const juros=document.getElementById('baixarJuros').value||'0';
+  const multa=document.getElementById('baixarMulta').value||'0';
+  const obs=document.getElementById('baixarObs').value;
   if(!data||!valor){alert('Preencha data e valor.');return;}
   const nf=notas.find(x=>x.id===baixarTarget.nfId);
 
   const res = await apiCall('baixarParcela', {
     numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
-    dataPagamento: data, valorPago: valor
+    dataPagamento: data, valorPago: valor,
+    juros: juros, multa: multa, obs: obs
   });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
 
@@ -1853,8 +1914,6 @@ function renderFornecedoresTable() {
     <td style="color:var(--muted)">${i+1}</td>
     <td><strong>${f.nome}</strong></td>
     <td style="font-family:monospace;font-size:12px">${f.cnpj}</td>
-    <td>${f.juros||'—'}</td>
-    <td>${f.multa||'—'}</td>
     <td>${f.protesta==='sim'?'<span class="badge badge-recusado">SIM</span>':'<span class="badge badge-pago">NÃO</span>'}</td>
     <td>${f.protesta==='sim'?(f.protesto||'—')+' dias':'—'}</td>
     <td>
@@ -1872,22 +1931,24 @@ async function salvarFornecedor() {
   const existing=fornecedores.find(f=>f.cnpj===cnpj&&f.nome===nome);
   if(existing){alert('Fornecedor já cadastrado.');return;}
 
-  const forn = {nome,cnpj,juros:parseFloat(document.getElementById('fJuros').value)||0,multa:parseFloat(document.getElementById('fMulta').value)||0,protesta:document.getElementById('fProtesta').value,protesto:parseInt(document.getElementById('fProtesto').value)||0};
+  const forn = {nome,cnpj,protesta:document.getElementById('fProtesta').value,protesto:parseInt(document.getElementById('fProtesto').value)||0};
   const res = await apiCall('salvarFornecedor', { fornecedor: JSON.stringify(forn) });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
 
   const r = await apiCall('listarFornecedores', {});
   if(r.ok) fornecedores = r.fornecedores;
   populateSelects();renderFornecedores();closeModal('modalFornecedor');
-  ['fNome','fCNPJ','fJuros','fMulta','fProtesto'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  ['fNome','fCNPJ','fProtesto'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  document.getElementById('fProtesta').value='nao';
+  document.getElementById('fProtestoDiasGrp').style.display='none';;
 }
 function editarFornecedor(id){
   const f=fornecedores.find(x=>x.id===id);
   if(!f)return;
   document.getElementById('fNome').value=f.nome;
   document.getElementById('fCNPJ').value=f.cnpj;
-  document.getElementById('fJuros').value=f.juros||'';
-  document.getElementById('fMulta').value=f.multa||'';
+  document.getElementById('fJuros') && (document.getElementById('fJuros').value='');
+  document.getElementById('fMulta') && (document.getElementById('fMulta').value='');
   document.getElementById('fProtesta').value=f.protesta||'nao';
   document.getElementById('fProtesto').value=f.protesto||'';
   toggleProtestaDias();
@@ -1898,8 +1959,7 @@ function editarFornecedor(id){
     const forn = {
       nome: document.getElementById('fNome').value.trim(),
       cnpj: document.getElementById('fCNPJ').value.trim(),
-      juros: parseFloat(document.getElementById('fJuros').value)||0,
-      multa: parseFloat(document.getElementById('fMulta').value)||0,
+      protesta: document.getElementById('fProtesta').value,
       protesto: parseInt(document.getElementById('fProtesto').value)||0
     };
     const res = await apiCall('salvarFornecedor', { fornecedor: JSON.stringify(forn) });
@@ -2017,7 +2077,7 @@ function renderDashboard() {
   const now=new Date();now.setHours(0,0,0,0);
   const em15=new Date(now);em15.setDate(em15.getDate()+15);
 
-  let totalValor=0,totalPago=0,totalVencido=0,totalProximo=0,countVenc=0,countPago=0,countAvencer=0,countProximo=0;
+  let totalValor=0,totalPago=0,totalVencido=0,totalProximo=0,totalJuros=0,totalMulta=0,countVenc=0,countPago=0,countAvencer=0,countProximo=0;
   const parcelaVencidas=[],parcelaProximas=[];
 
   filtered.forEach(nf=>{
@@ -2031,7 +2091,11 @@ function renderDashboard() {
       const v=new Date(p.vencimento);v.setHours(0,0,0,0);
       const pago=String(p.situacao||'').toUpperCase()==='PAGO';
       const val=parseMoney(p.valor);
-      if(pago) totalPago+=val;
+      if(pago){
+        totalPago+=val;
+        totalJuros+=parseMoney(p.juros||0);
+        totalMulta+=parseMoney(p.multa||0);
+      }
       else if(v<now){totalVencido+=val;parcelaVencidas.push({nf,p,i});}
       else if(v>=now&&v<=em15){totalProximo+=val;parcelaProximas.push({nf,p,i});}
     });
@@ -2048,6 +2112,8 @@ function renderDashboard() {
     {label:'Total de NFs',value:filtered.length,sub:`${yr==='all'?'Todos os anos':yr}`,cls:''},
     {label:'Valor Total',value:fmtMoney(totalValor),sub:'emitido',cls:''},
     {label:'Pago',value:fmtMoney(totalPago),sub:`${countPago} notas quitadas`,cls:'green'},
+    {label:'Juros Pagos',value:fmtMoney(window._totalJurosGAS||totalJuros),sub:'acumulado de juros',cls:'yellow'},
+    {label:'Multas Pagas',value:fmtMoney(window._totalMultaGAS||totalMulta),sub:'acumulado de multas',cls:'orange'},
     {label:'Vencidas',value:fmtMoney(totalVencido),sub:`${parcelaVencidas.length} parcelas`,cls:'red'},
     {label:'Próx. Vencimento',value:fmtMoney(totalProximo),sub:`${parcelaProximas.length} parcelas (≤15 dias)`,cls:'yellow'},
     {label:'Trânsito de Cartório',value:countTransito,sub:'em trânsito',cls:'orange'},
@@ -2501,6 +2567,14 @@ function toggleProtestaDias() {
   const grp = document.getElementById('fProtestoDiasGrp');
   if(grp) grp.style.display = v==='sim' ? 'block' : 'none';
 }
+
+// Atualiza label de dias em tempo real
+document.addEventListener('input', function(e){
+  if(e.target && e.target.id==='fProtesto'){
+    const lbl = document.getElementById('fProtestoDiasLabel');
+    if(lbl) lbl.textContent = e.target.value||'0';
+  }
+});
 </script>
 
 <!-- MODAL EDITAR PARCELA -->
