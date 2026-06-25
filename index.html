@@ -134,9 +134,13 @@ a{color:var(--accent);text-decoration:none}
 .topbar-right{display:flex;align-items:center;gap:12px}
 .user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:6px 12px;font-size:13px}
 .user-role{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:4px}
+.usr-tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
+.usr-tab:hover{color:var(--text)}
+.usr-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.role-master{background:#7c3aed30;color:#c4b5fd}
 .role-admin{background:#2f7d5e35;color:#a7e8cc}
 .role-operador{background:#10b98120;color:#6ee7b7}
-.role-aprovador{background:#c1272d30;color:#f5b8ba}
+.role-pendente{background:#dc262630;color:#fca5a5}
 
 /* MAIN */
 .main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%}
@@ -359,14 +363,8 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         <span class="field-icon">🔒</span>
         <input class="with-icon" type="password" id="regSenha2" placeholder="Confirme a senha" autocomplete="new-password">
       </div>
-      <div class="lf-group">
-        <label>Tipo de conta</label>
-        <select id="regPerfil">
-          <option value="operador">Usuário — lança notas fiscais</option>
-          <option value="aprovador">Aprovador — valida notas</option>
-          <option value="admin">Administrador</option>
-        </select>
-        <div class="hint">⚠️ Somente o Administrador Master controla o acesso dos usuários.</div>
+      <div class="hint" style="margin-top:8px;padding:10px 14px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8">
+        ⏳ Sua conta ficará <strong style="color:#f59e0b">pendente de aprovação</strong> até que o Administrador libere o acesso. Você receberá acesso de Operador por padrão.
       </div>
       <button class="btn-login" onclick="doRegister()" id="btnDoRegister">Criar conta</button>
       <div id="registerLoading" class="login-loading">⏳ Criando conta...</div>
@@ -461,13 +459,13 @@ select.filter:focus{outline:none;border-color:var(--accent)}
             </select>
             <select class="filter" id="filtStatus" onchange="filterNotas()">
               <option value="">Todos os status</option>
-              <option value="PAGO">Pago</option>
-              <option value="A VENCER">A Vencer</option>
-              <option value="PRÓXIMO VENCIMENTO">Próximo Vencimento</option>
-              <option value="VENCIDA">Vencida</option>
-              <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
-              <option value="EM CARTÓRIO">Em Cartório</option>
-              <option value="PROTESTADA">Protestada</option>
+              <option class="status-pag-opt" value="PAGO">Pago</option>
+              <option class="status-pag-opt" value="A VENCER">A Vencer</option>
+              <option class="status-pag-opt" value="PRÓXIMO VENCIMENTO">Próximo Vencimento</option>
+              <option class="status-pag-opt" value="VENCIDA">Vencida</option>
+              <option class="status-pag-opt" value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
+              <option class="status-pag-opt" value="EM CARTÓRIO">Em Cartório</option>
+              <option class="status-pag-opt" value="PROTESTADA">Protestada</option>
             </select>
             <select class="filter" id="filtFornecedor" onchange="filterNotas()">
               <option value="">Todos fornecedores</option>
@@ -483,7 +481,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         <div style="overflow-x:auto">
           <table class="tbl" id="tblNotas">
             <thead>
-              <tr>
+              <tr id="theadNotas">
                 <th>Nº NF</th>
                 <th>Data Fat.</th>
                 <th>Fornecedor</th>
@@ -491,7 +489,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
                 <th>Parcelas</th>
                 <th>Conta</th>
                 <th>Validação</th>
-                <th>Status</th>
+                <th id="thStatus">Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -509,7 +507,23 @@ select.filter:focus{outline:none;border-color:var(--accent)}
     <div id="page-aprovacao" class="page">
       <div class="page-header">
         <h2>Fila de Aprovação</h2>
-        <div class="notice notice-info" style="margin:0">🔐 Somente aprovadores e administradores podem validar ou recusar NFs</div>
+      </div>
+      <div class="notice notice-info" style="margin-bottom:14px">🔐 Operadores e Administradores podem aprovar ou recusar NFs. Operadores <strong>não</strong> visualizam informações de pagamento.</div>
+      <div class="table-wrap" style="margin-bottom:14px">
+        <div class="table-toolbar" style="gap:8px;flex-wrap:wrap">
+          <input class="search-box" id="searchAprovacao" placeholder="🔍 Buscar por NF, fornecedor ou CNPJ..." oninput="filterAprovacao()" style="flex:1;min-width:220px">
+          <select class="filter" id="filtAprovStatus" onchange="filterAprovacao()">
+            <option value="">Todos os status</option>
+            <option value="AGUARDANDO">Aguardando</option>
+            <option value="VALIDADO">Validado</option>
+            <option value="RECUSADO">Recusado</option>
+          </select>
+          <select class="filter" id="filtAprovAno" onchange="filterAprovacao()">
+            <option value="">Todos anos</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
       </div>
       <div id="aprovacaoList"></div>
     </div>
@@ -649,11 +663,31 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         <h2>Gestão de Usuários</h2>
         <button class="btn btn-primary" onclick="abrirNovoUsuario()">➕ Novo Usuário</button>
       </div>
-      <div class="notice notice-info">🔒 Esta área é exclusiva do Administrador Master (<strong>comprashlr.ahvn@gmail.com</strong>). Aqui você controla quem acessa o sistema e com qual perfil.</div>
+      <div class="notice notice-info">🔒 Esta área é exclusiva do Administrador Master. Aqui você controla quem acessa o sistema e com qual perfil. Novos cadastros chegam como <strong>Pendente de Aprovação</strong>.</div>
+
+      <!-- Abas: Ativos / Pendentes / Inativos -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
+        <button class="usr-tab active" id="usrTabAtivos" onclick="switchUsrTab('ativos',this)">✅ Usuários Ativos</button>
+        <button class="usr-tab" id="usrTabPendentes" onclick="switchUsrTab('pendentes',this)">⏳ Pendentes <span id="badgePendentes" class="badge badge-aguardando" style="margin-left:4px;display:none">0</span></button>
+        <button class="usr-tab" id="usrTabInativos" onclick="switchUsrTab('inativos',this)">🚫 Inativos</button>
+      </div>
+
+      <!-- Barra de busca -->
       <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="search-box" id="searchUsuarios" placeholder="🔍 Buscar por nome ou e-mail..." oninput="filterUsuarios()">
+        </div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>Nome</th><th>E-mail / Usuário</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail / Usuário</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
             <tbody id="tbodyUsuarios"></tbody>
           </table>
         </div>
@@ -677,9 +711,8 @@ select.filter:focus{outline:none;border-color:var(--accent)}
       <div class="form-grid cols3" style="grid-template-columns:1fr 1fr">
         <div class="form-group"><label>Perfil</label>
           <select id="uRole">
-            <option value="operador">Operador</option>
-            <option value="aprovador">Aprovador</option>
-            <option value="admin">Administrador</option>
+            <option value="operador">Operador — lança e pesquisa NFs</option>
+            <option value="admin">Administrador — acesso completo</option>
           </select>
         </div>
         <div class="form-group"><label>Status</label>
@@ -921,7 +954,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
 // ====================================================
 // DATA & STATE
 // ====================================================
-const MASTER_EMAIL = 'comprashlr.ahvn@gmail.com';
+const MASTER_EMAIL = window.MASTER_EMAIL = 'comprashlr.ahvn@gmail.com';
 let currentUser = null;
 let notas = [];
 let fornecedores = [];
@@ -1066,7 +1099,10 @@ async function doLogin() {
   document.getElementById('loginLoading').style.display = 'none';
 
   if (!res.ok) {
-    document.getElementById('loginError').textContent = res.erro || 'Usuário ou senha incorretos.';
+    const msg = res.pendente
+      ? '⏳ Sua conta ainda está aguardando aprovação do Administrador Master.'
+      : res.erro || 'Usuário ou senha incorretos.';
+    document.getElementById('loginError').textContent = msg;
     document.getElementById('loginError').style.display = 'block';
     return;
   }
@@ -1081,8 +1117,8 @@ async function doLogin() {
   document.getElementById('app').style.display='flex';
   document.getElementById('userNameBadge').textContent = currentUser.nome;
   const rb = document.getElementById('userRoleBadge');
-  rb.textContent = currentUser.isMaster ? 'Master' : currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'aprovador' ? 'Aprovador' : 'Operador';
-  rb.className = 'user-role ' + (currentUser.role==='admin'?'role-admin':currentUser.role==='aprovador'?'role-aprovador':'role-operador');
+  rb.textContent = currentUser.isMaster ? 'Master' : currentUser.role === 'admin' ? 'Administrador' : 'Operador';
+  rb.className = 'user-role ' + (currentUser.isMaster?'role-master':currentUser.role==='admin'?'role-admin':'role-operador');
 
   aplicarPermissoes();
 
@@ -1091,11 +1127,12 @@ async function doLogin() {
   renderNotas();
   renderFornecedores();
 
-  // Dashboard só para admin — operador/aprovador caem direto em Notas
+  // Dashboard só para admin/master — operador cai em Notas
   if (currentUser.role === 'admin') {
     renderDashboard();
     goPage('dashboard', document.getElementById('navDashboard'));
   } else {
+    // Operador: cai direto em Notas (sem status de pagamento)
     goPage('notas', document.querySelector('[data-page="notas"]'));
   }
 }
@@ -1154,7 +1191,8 @@ async function doRegister() {
   document.getElementById('btnDoRegister').disabled = true;
   document.getElementById('registerLoading').style.display='block';
 
-  const res = await apiCall('registrar', { usuario: JSON.stringify({ id: email, nome, senha, role: perfil }) });
+  // Cadastro público sempre cria conta como operador pendente de aprovação
+  const res = await apiCall('registrar', { usuario: JSON.stringify({ id: email, nome, senha, role: 'operador', pendente: true }) });
 
   document.getElementById('btnDoRegister').disabled = false;
   document.getElementById('registerLoading').style.display='none';
@@ -1171,27 +1209,45 @@ async function doRegister() {
 }
 
 // Ajusta visibilidade de menus conforme o perfil do usuário
+// PAPÉIS:
+//  master   → tudo + gestão de usuários
+//  admin    → dashboard + relatórios + lançamentos + aprovação + baixas
+//  operador → lançamentos + aprovação/pesquisa de notas (SEM status de pagamento)
 function aplicarPermissoes() {
   const role = currentUser.role;
   const isMaster = !!currentUser.isMaster;
 
-  // Dashboard — somente admin
-  const navDash = document.getElementById('navDashboard');
-  navDash.style.display = (role === 'admin') ? '' : 'none';
+  // Dashboard — master e admin
+  document.getElementById('navDashboard').style.display = (role === 'admin') ? '' : 'none';
 
-  // Aprovação — operador não vê
-  document.getElementById('navAprov').style.display = (role === 'operador') ? 'none' : '';
+  // Aprovação — todos (operador pode ver e aprovar, mas sem status pagamento)
+  document.getElementById('navAprov').style.display = '';
 
-  // Relatórios — somente admin
+  // Relatórios — somente admin e master
   document.getElementById('navRelatorios').style.display = (role === 'admin') ? '' : 'none';
 
   // Usuários — somente Administrador Master
   const navUsr = document.getElementById('navUsuarios');
   if (navUsr) navUsr.style.display = isMaster ? '' : 'none';
 
-  // Botão "Nova NF" — operador e admin podem lançar
+  // Botão "Nova NF" — todos podem lançar
   const btnNova = document.getElementById('btnNovaNote');
-  if (btnNova) btnNova.style.display = (role === 'aprovador') ? 'none' : '';
+  if (btnNova) btnNova.style.display = '';
+
+  // Ocultar filtro de status (pagamento) para operador
+  document.querySelectorAll('.status-pag-opt').forEach(opt => {
+    opt.style.display = (role==='admin') ? '' : 'none';
+  });
+  const filtSt = document.getElementById('filtStatus');
+  if (filtSt) {
+    filtSt.style.display = (role==='admin') ? '' : 'none';
+    if (role!=='admin') filtSt.value='';
+  }
+
+  // Ao abrir página usuários, renderizar
+  if (role==='admin' && document.getElementById('page-usuarios')?.classList.contains('active')) {
+    renderUsuarios();
+  }
 }
 
 function doLogout() {
@@ -1208,7 +1264,7 @@ function doLogout() {
 // NAVIGATION
 // ====================================================
 function goPage(id, btn) {
-  // Bloqueia acesso ao dashboard/relatórios para não-admins (mesmo via teclado/histórico)
+  // Bloqueia acesso ao dashboard/relatórios para operadores
   if ((id === 'dashboard' || id === 'relatorios') && currentUser.role !== 'admin') {
     id = 'notas';
     btn = document.querySelector('[data-page="notas"]');
@@ -1322,8 +1378,13 @@ function validBadge(s) {
   if(s.indexOf('VALIDADO')!==-1) return `<span class="badge badge-validado">VALIDADO</span>`;
   return `<span class="badge badge-aguardando">${s||'AGUARDANDO'}</span>`;
 }
-function canEdit() { return currentUser && (currentUser.role==='admin'||currentUser.role==='operador'); }
-function canApprove() { return currentUser && (currentUser.role==='admin'||currentUser.role==='aprovador'); }
+function canEdit()    { return currentUser && (currentUser.role==='admin'||currentUser.role==='operador'); }
+function canApprove() { return currentUser && (currentUser.role==='admin'||currentUser.role==='operador'); }
+function canBaixar()  { return currentUser && currentUser.role==='admin'; }
+function isAdmin()    { return currentUser && currentUser.role==='admin'; }
+function isMasterUser(){ return currentUser && !!currentUser.isMaster; }
+// Operador NÃO vê status de pagamento (colunas "Data Pag.", "Valor Pago", "Status geral")
+function canVerPagamento() { return currentUser && currentUser.role==='admin'; }
 
 // ====================================================
 // SELECTS
@@ -1642,6 +1703,9 @@ function renderNotas() {
   populateSelects();
 }
 function renderNotasTable() {
+  // Mostra/oculta coluna Status conforme permissão
+  const thSt = document.getElementById('thStatus');
+  if (thSt) thSt.style.display = canVerPagamento() ? '' : 'none';
   const total=filteredNotas.length;
   const pages=Math.ceil(total/PER_PAGE)||1;
   if(notasPag>pages) notasPag=pages;
@@ -1652,6 +1716,7 @@ function renderNotasTable() {
     const st=calcStatus(n);
     const canAct=canEdit();
     const canApr=canApprove();
+    const showStatus = canVerPagamento();
     return `<tr>
       <td><strong>#${n.numero}</strong></td>
       <td>${fmtDate(n.dataFat)}</td>
@@ -1660,12 +1725,12 @@ function renderNotasTable() {
       <td style="font-size:11px;color:var(--muted)">${n.numParcelas}x</td>
       <td style="font-size:12px">${n.conta||'—'}</td>
       <td>${validBadge(n.validacao)}</td>
-      <td>${statusBadge(st)}</td>
+      ${showStatus ? `<td>${statusBadge(st)}</td>` : ''}
       <td>
         <div class="tbl-actions">
           <button class="btn btn-ghost btn-sm" onclick="verDetalheNF('${n.id}')">👁 Ver</button>
           ${canAct?`<button class="btn btn-ghost btn-sm" onclick="editarNF('${n.id}')">✏️</button>`:''}
-          ${canAct?`<button class="btn btn-danger btn-sm" onclick="excluirNF('${n.id}')">🗑</button>`:''}
+          ${canAct&&isAdmin()?`<button class="btn btn-danger btn-sm" onclick="excluirNF('${n.id}')">🗑</button>`:''}
         </div>
       </td>
     </tr>`;
@@ -1690,20 +1755,21 @@ function verDetalheNF(id) {
   const nf=notas.find(x=>x.id===id);
   if(!nf) return;
   const st=calcStatus(nf);
+  const showPag = canVerPagamento();
   let parcelasHTML=nf.parcelas.map((p,i)=>{
     const venc=new Date(p.vencimento);venc.setHours(0,0,0,0);
     const now=new Date();now.setHours(0,0,0,0);
-    const vencida=venc<now&&p.situacao!=='PAGO';
     return `<tr>
       <td style="font-weight:700">${i+1}</td>
       <td>${fmtDate(p.vencimento)}</td>
       <td>${fmtMoney(parseMoney(p.valor))}</td>
-      <td>${p.dataPagamento?fmtDate(p.dataPagamento):'—'}</td>
-      <td>${p.valorPago?fmtMoney(parseMoney(p.valorPago)):'—'}</td>
-      <td>${statusBadge(p.situacao||'A VENCER')}</td>
+      ${showPag?`<td>${p.dataPagamento?fmtDate(p.dataPagamento):'—'}</td>`:''}
+      ${showPag?`<td>${p.valorPago?fmtMoney(parseMoney(p.valorPago)):'—'}</td>`:''}
+      ${showPag?`<td>${statusBadge(p.situacao||'A VENCER')}</td>`:''}
       <td>
         <div class="tbl-actions">
-          ${p.situacao!=='PAGO'?`
+          ${!showPag&&p.situacao!=='PAGO'?`<button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${id}',${i})" title="Editar vencimento">✏️ Venc.</button>`:''}
+          ${showPag&&canBaixar()&&p.situacao!=='PAGO'?`
             <button class="btn btn-success btn-sm" onclick="abrirBaixar('${id}',${i})">💰 Baixar</button>
             <button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${id}',${i})" title="Editar data/status">✏️</button>
           `:''}
@@ -1726,7 +1792,7 @@ function verDetalheNF(id) {
     <div class="section-title">Parcelas</div>
     <div style="overflow-x:auto">
     <table class="tbl">
-      <thead><tr><th>#</th><th>Vencimento</th><th>Valor</th><th>Data Pag.</th><th>Valor Pago</th><th>Status</th><th>Ação</th></tr></thead>
+      <thead><tr><th>#</th><th>Vencimento</th><th>Valor</th>${showPag?'<th>Data Pag.</th><th>Valor Pago</th><th>Status</th>':''}<th>Ação</th></tr></thead>
       <tbody>${parcelasHTML}</tbody>
     </table></div>
   `;
@@ -1837,62 +1903,58 @@ async function excluirNF(id) {
 // ====================================================
 // APROVAÇÃO
 // ====================================================
+function filterAprovacao() {
+  const q = (document.getElementById('searchAprovacao')?.value||'').toLowerCase();
+  const stFilt = (document.getElementById('filtAprovStatus')?.value||'').toUpperCase();
+  const anoFilt = document.getElementById('filtAprovAno')?.value||'';
+  const lista = notas.filter(nf => {
+    if (anoFilt && nf.ano !== anoFilt) return false;
+    const valid = String(nf.validacao||'').toUpperCase();
+    if (stFilt==='AGUARDANDO' && valid.indexOf('AGUARDANDO')===-1) return false;
+    if (stFilt==='VALIDADO'   && valid!=='VALIDADO') return false;
+    if (stFilt==='RECUSADO'   && valid.indexOf('RECUSADO')===-1) return false;
+    if (q && !(nf.numero+' '+nf.fornecedor+' '+(nf.cnpj||'')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  _renderAprovacaoLista(lista);
+}
+
 function renderAprovacao() {
-  const pendentes=notas.filter(n=>(n.validacao||'').indexOf('AGUARDANDO')!==-1);
-  const div=document.getElementById('aprovacaoList');
-  if(!pendentes.length){
-    div.innerHTML=`<div class="empty"><div class="eicon">✅</div><div>Nenhuma NF aguardando aprovação</div></div>`;
+  filterAprovacao();
+}
+
+function _renderAprovacaoLista(lista) {
+  const div = document.getElementById('aprovacaoList');
+  if (!lista.length) {
+    div.innerHTML = `<div class="empty" style="padding:40px 0">📭 Nenhuma nota encontrada com esses filtros.</div>`;
     return;
   }
-  div.innerHTML=pendentes.map(nf=>{
-    const st=calcStatus(nf);
-    const parcChips=nf.parcelas.map((p,i)=>`<span class="parcela-chip">${i+1}. ${fmtDate(p.vencimento)} · ${fmtMoney(parseMoney(p.valor))}</span>`).join('');
-    const canApr=canApprove();
-    return `<div class="approval-card">
-      <div class="approval-info">
-        <h3>NF #${nf.numero} — ${nf.fornecedor}</h3>
-        <p>Conta: ${nf.conta} · Ano: ${nf.ano}</p>
-        <div class="approval-meta">
-          <span>📅 ${fmtDate(nf.dataFat)}</span>
-          <span>💰 ${fmtMoney(parseMoney(nf.valorTotal))}</span>
-          <span>${nf.numParcelas}x parcelas</span>
+  const showPag = canVerPagamento();
+  div.innerHTML = lista.map(nf => {
+    const st = calcStatus(nf);
+    const valid = String(nf.validacao||'').toUpperCase();
+    const aguardando = valid.indexOf('AGUARDANDO') !== -1;
+    const recusado   = valid.indexOf('RECUSADO') !== -1;
+    return `<div class="chart-card" style="margin-bottom:12px;border-left:3px solid ${aguardando?'var(--yellow)':recusado?'var(--red)':'var(--green)'}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px">NF #${nf.numero} — ${nf.fornecedor}</div>
+          <div style="font-size:12px;color:var(--muted)">
+            📅 ${fmtDate(nf.dataFat)} &nbsp;|&nbsp; 💰 ${fmtMoney(parseMoney(nf.valorTotal))} &nbsp;|&nbsp; 📂 ${nf.conta||'—'} &nbsp;|&nbsp; ${nf.numParcelas}x parcelas
+            ${showPag ? `&nbsp;|&nbsp; ${statusBadge(st)}` : ''}
+          </div>
+          <div style="margin-top:6px">${validBadge(nf.validacao)}</div>
         </div>
-        <div class="parcela-summary">${parcChips}</div>
-      </div>
-      <div class="approval-actions">
-        <button class="btn btn-ghost btn-sm" onclick="verDetalheNF('${nf.id}')">👁 Ver</button>
-        ${canApr?`<button class="btn btn-success btn-sm" onclick="aprovarNF('${nf.id}')">✅ Aprovar</button>
-        <button class="btn btn-danger btn-sm" onclick="abrirRecusar('${nf.id}')">❌ Recusar</button>`:`<span style="font-size:12px;color:var(--muted)">Sem permissão</span>`}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="verDetalheNF('${nf.id}')">👁 Ver</button>
+          ${aguardando||recusado ? `<button class="btn btn-success btn-sm" onclick="aprovarNF('${nf.id}')">✅ Aprovar</button>` : ''}
+          ${aguardando ? `<button class="btn btn-danger btn-sm" onclick="recusarNF('${nf.id}')">❌ Recusar</button>` : ''}
+        </div>
       </div>
     </div>`;
   }).join('');
 }
-async function aprovarNF(id) {
-  if(!canApprove()){alert('Sem permissão.');return;}
-  const nf=notas.find(x=>x.id===id);
-  const res = await apiCall('aprovarNota', { numero: nf.numero, ano: nf.ano });
-  if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
-  await reloadNotas();
-  renderAprovacao();renderNotas();
-  if (currentUser.role === 'admin') renderDashboard();
-}
-function abrirRecusar(id) {
-  if(!canApprove()){alert('Sem permissão.');return;}
-  recusaTarget=id;
-  document.getElementById('recusaMotivo').value='';
-  openModal('modalRecusar');
-}
-async function confirmarRecusa() {
-  const motivo=document.getElementById('recusaMotivo').value.trim();
-  if(!motivo){alert('Informe o motivo.');return;}
-  const nf=notas.find(x=>x.id===recusaTarget);
-  const res = await apiCall('recusarNota', { numero: nf.numero, ano: nf.ano, motivo });
-  if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
-  await reloadNotas();
-  closeModal('modalRecusar');
-  renderAprovacao();renderNotas();
-  if (currentUser.role === 'admin') renderDashboard();
-}
+
 
 // ====================================================
 // FORNECEDORES
@@ -1984,32 +2046,86 @@ async function excluirFornecedor(id){
 // USUÁRIOS (somente Administrador Master)
 // ====================================================
 let usuariosList = [];
+let usrTabAtual = 'ativos'; // 'ativos' | 'pendentes' | 'inativos'
+
+function switchUsrTab(tab, btn) {
+  usrTabAtual = tab;
+  document.querySelectorAll('.usr-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  filterUsuarios();
+}
+
+function filterUsuarios() {
+  const q = (document.getElementById('searchUsuarios')?.value||'').toLowerCase();
+  const tb = document.getElementById('tbodyUsuarios');
+  if (!usuariosList.length) return;
+  const MASTER = window.MASTER_EMAIL||'comprashlr.ahvn@gmail.com';
+  let lista = usuariosList.filter(u => {
+    if (usrTabAtual==='ativos')    return u.ativo && !u.pendente;
+    if (usrTabAtual==='pendentes') return !!u.pendente;
+    if (usrTabAtual==='inativos')  return !u.ativo && !u.pendente;
+    return true;
+  });
+  if (q) lista = lista.filter(u => u.nome.toLowerCase().includes(q)||u.id.toLowerCase().includes(q));
+  const roleLabel = {admin:'Administrador', operador:'Operador', master:'Master'};
+  if (!lista.length) { tb.innerHTML=`<tr><td colspan="5" class="empty">Nenhum usuário nesta categoria.</td></tr>`; return; }
+  tb.innerHTML = lista.map(u => {
+    const isMasterRow = u.id.toLowerCase() === MASTER;
+    const roleBadge = isMasterRow
+      ? '<span class="badge" style="background:#7c3aed30;color:#c4b5fd">MASTER</span>'
+      : u.role==='admin'
+        ? '<span class="badge badge-pago">ADMINISTRADOR</span>'
+        : '<span class="badge badge-avencer">OPERADOR</span>';
+    const statusBadgeUsr = u.pendente
+      ? '<span class="badge badge-aguardando">PENDENTE</span>'
+      : u.ativo
+        ? '<span class="badge badge-pago">ATIVO</span>'
+        : '<span class="badge badge-recusado">INATIVO</span>';
+    const acoesPendente = u.pendente ? `
+      <button class="btn btn-success btn-sm" onclick="aprovarUsuario('${u.id}')" title="Aprovar e ativar">✅ Aprovar</button>
+      <button class="btn btn-danger btn-sm" onclick="recusarUsuario('${u.id}')" title="Recusar cadastro">❌ Recusar</button>` : '';
+    const acoesNormal = !u.pendente ? `
+      <button class="btn btn-ghost btn-sm" onclick="editarUsuario('${u.id}')">✏️</button>
+      ${!isMasterRow?`<button class="btn btn-danger btn-sm" onclick="excluirUsuarioUI('${u.id}')">🗑</button>`:''}` : '';
+    return `<tr>
+      <td><strong>${u.nome}</strong>${isMasterRow?' <span class="badge badge-validado" style="font-size:9px">MASTER</span>':''}</td>
+      <td style="font-family:monospace;font-size:12px">${u.id}</td>
+      <td>${roleBadge}</td>
+      <td>${statusBadgeUsr}</td>
+      <td><div class="tbl-actions">${acoesPendente}${acoesNormal}</div></td>
+    </tr>`;
+  }).join('');
+}
+
 async function renderUsuarios() {
   const res = await apiCall('listarUsuarios', {});
   const tb = document.getElementById('tbodyUsuarios');
   if (!res.ok) {
-    tb.innerHTML = `<tr><td colspan="5" class="empty">${res.erro || 'Sem permissão para ver usuários.'}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="5" class="empty">${res.erro || 'Sem permissão.'}</td></tr>`;
     return;
   }
   usuariosList = res.usuarios;
-  if (!usuariosList.length) { tb.innerHTML = `<tr><td colspan="5" class="empty">Nenhum usuário cadastrado</td></tr>`; return; }
+  // Conta pendentes e atualiza badge
+  const pendentes = usuariosList.filter(u=>u.pendente).length;
+  const badge = document.getElementById('badgePendentes');
+  if (badge) { badge.textContent=pendentes; badge.style.display=pendentes>0?'':'none'; }
+  filterUsuarios();
+}
 
-  const roleLabel = {admin:'Administrador', operador:'Operador', aprovador:'Aprovador'};
-  tb.innerHTML = usuariosList.map(u => {
-    const isMasterRow = u.id.toLowerCase() === MASTER_EMAIL;
-    return `<tr>
-      <td><strong>${u.nome}</strong>${isMasterRow?' <span class="badge badge-validado">MASTER</span>':''}</td>
-      <td style="font-family:monospace;font-size:12px">${u.id}</td>
-      <td>${roleLabel[u.role]||u.role}</td>
-      <td>${u.ativo ? '<span class="badge badge-pago">ATIVO</span>' : '<span class="badge badge-recusado">INATIVO</span>'}</td>
-      <td>
-        <div class="tbl-actions">
-          <button class="btn btn-ghost btn-sm" onclick="editarUsuario('${u.id}')">✏️</button>
-          ${isMasterRow?'':`<button class="btn btn-danger btn-sm" onclick="excluirUsuarioUI('${u.id}')">🗑</button>`}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+async function aprovarUsuario(id) {
+  if (!confirm(`Aprovar o usuário "${id}"? Ele terá acesso ao sistema como Operador.`)) return;
+  const u = usuariosList.find(x=>x.id===id);
+  if (!u) return;
+  const res = await apiCall('salvarUsuario', { usuario: JSON.stringify({ id, nome: u.nome, senha: '__MANTER__', role: u.role||'operador', ativo: true, pendente: false }) });
+  if (!res.ok) { alert('Erro: '+(res.erro||'')); return; }
+  renderUsuarios();
+}
+
+async function recusarUsuario(id) {
+  if (!confirm(`Recusar e excluir o cadastro de "${id}"? Esta ação não pode ser desfeita.`)) return;
+  const res = await apiCall('excluirUsuario', { userId: id });
+  if (!res.ok) { alert('Erro: '+(res.erro||'')); return; }
+  renderUsuarios();
 }
 
 function abrirNovoUsuario() {
@@ -2023,48 +2139,51 @@ function abrirNovoUsuario() {
   document.getElementById('uAtivo').value='true';
   openModal('modalUsuario');
 }
+
 function editarUsuario(id) {
   const u = usuariosList.find(x=>x.id===id);
   if(!u) return;
   document.getElementById('modalUsuarioTitle').textContent = 'Editar Usuário';
   document.getElementById('uNome').value=u.nome;
   document.getElementById('uId').value=u.id;
-  document.getElementById('uId').disabled=true; // não permite trocar e-mail (chave do usuário)
+  document.getElementById('uId').disabled=true;
   document.getElementById('uSenha').value='';
   document.getElementById('uSenhaHint').textContent='(deixe em branco para manter a atual)';
-  document.getElementById('uRole').value=u.role;
+  document.getElementById('uRole').value=u.role==='admin'?'admin':'operador';
   document.getElementById('uAtivo').value=String(u.ativo);
   openModal('modalUsuario');
 }
+
 async function salvarUsuario() {
   const id = document.getElementById('uId').value.trim().toLowerCase();
   const nome = document.getElementById('uNome').value.trim();
   const senha = document.getElementById('uSenha').value;
   const role = document.getElementById('uRole').value;
   const ativo = document.getElementById('uAtivo').value === 'true';
+  const MASTER = window.MASTER_EMAIL||'comprashlr.ahvn@gmail.com';
 
   if(!id || !nome){ alert('Preencha nome e e-mail/usuário.'); return; }
-  if(id === MASTER_EMAIL && role !== 'admin'){ alert('O Administrador Master deve permanecer com perfil Administrador.'); return; }
+  if(id === MASTER && role !== 'admin'){ alert('O Administrador Master deve permanecer com perfil Administrador.'); return; }
 
   let senhaFinal = senha;
   if(!senhaFinal){
     const existing = usuariosList.find(x=>x.id===id);
     if(!existing){ alert('Defina uma senha para o novo usuário.'); return; }
-    senhaFinal = '__MANTER__'; // sinaliza ao backend para não alterar
+    senhaFinal = '__MANTER__';
   }
 
-  const res = await apiCall('salvarUsuario', { usuario: JSON.stringify({ id, nome, senha: senhaFinal, role, ativo }) });
+  const res = await apiCall('salvarUsuario', { usuario: JSON.stringify({ id, nome, senha: senhaFinal, role, ativo, pendente: false }) });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
   closeModal('modalUsuario');
   renderUsuarios();
 }
+
 async function excluirUsuarioUI(id) {
   if(!confirm('Excluir o usuário "'+id+'"? Esta ação não pode ser desfeita.')) return;
   const res = await apiCall('excluirUsuario', { userId: id });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
   renderUsuarios();
 }
-
 
 // ====================================================
 // DASHBOARD
