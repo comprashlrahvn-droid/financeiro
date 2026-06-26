@@ -132,8 +132,79 @@ a{color:var(--accent);text-decoration:none}
 
 /* LAYOUT */
 #app{display:none;flex-direction:column;min-height:100vh}
-.topbar{background:var(--accent);border-bottom:none;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.topbar-left{display:flex;align-items:center;gap:16px}
+/* ═══ LAYOUT SIDEBAR ═══════════════════════════════════════════════ */
+#app{display:flex!important;height:100vh;overflow:hidden}
+.sidebar{
+  width:240px;min-width:240px;height:100vh;
+  background:var(--accent-grad);
+  display:flex;flex-direction:column;
+  position:relative;z-index:100;
+  box-shadow:4px 0 20px rgba(0,0,0,.12);
+  transition:width .25s ease;
+  overflow:hidden;
+}
+.sidebar-brand{
+  padding:24px 20px 20px;
+  border-bottom:1px solid rgba(255,255,255,.12);
+  display:flex;align-items:center;gap:12px;
+}
+.sidebar-brand-icon{
+  width:38px;height:38px;border-radius:10px;
+  background:rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.sidebar-brand-text .title{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px;line-height:1.2}
+.sidebar-brand-text .sub{font-size:10px;color:rgba(255,255,255,.55);font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+.sidebar-nav{flex:1;padding:16px 12px;overflow-y:auto;overflow-x:hidden}
+.nav-group-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;padding:0 8px;margin:16px 0 6px}
+.nav-group-label:first-child{margin-top:0}
+.nav-btn{
+  width:100%;padding:10px 12px;border-radius:10px;
+  cursor:pointer;font-size:13px;font-weight:500;
+  color:rgba(255,255,255,.72);border:none;background:none;
+  font-family:var(--font);transition:all .15s;
+  display:flex;align-items:center;gap:10px;
+  position:relative;white-space:nowrap;
+  margin-bottom:2px;text-align:left;
+}
+.nav-btn:hover{color:#fff;background:rgba(255,255,255,.12)}
+.nav-btn.active{color:#fff;background:rgba(255,255,255,.18);font-weight:700}
+.nav-btn.active::before{
+  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:20px;background:#fff;border-radius:0 3px 3px 0;
+}
+.nav-btn .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-btn .nav-badge{
+  margin-left:auto;background:rgba(220,38,38,.85);color:#fff;
+  font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;
+}
+.sidebar-footer{
+  padding:16px 20px;border-top:1px solid rgba(255,255,255,.12);
+}
+.sidebar-user{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sidebar-avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(255,255,255,.2);display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.sidebar-user-info .name{font-size:13px;font-weight:600;color:#fff;line-height:1.2}
+.sidebar-user-info .role-tag{font-size:10px;color:rgba(255,255,255,.6);font-weight:500}
+.sidebar-sync{font-size:11px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:5px;margin-bottom:10px}
+
+/* ═══ CONTEÚDO PRINCIPAL ═══════════════════════════════════════════ */
+.main-wrapper{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.main-header{
+  height:52px;background:#fff;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;flex-shrink:0;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+.main-header-title{font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.main-header-title .breadcrumb{font-size:12px;color:var(--muted);font-weight:400;margin-left:4px}
+.main{flex:1;overflow-y:auto;overflow-x:hidden;background:var(--bg)}
+.topbar-left{display:none}
 .logo{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
 .logo span{color:#a7e8cc}
 .nav{display:flex;gap:2px}
@@ -275,7 +346,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
 
 /* PRINT */
 @media print{
-  .topbar,.nav-btn,.btn-primary,.btn-ghost,.tbl-actions{display:none!important}
+  .sidebar,.btn-primary,.btn-ghost,.tbl-actions{display:none!important}
   body{background:#fff;color:#000}
   .table-wrap{border:1px solid #ccc}
   .tbl td,.tbl th{border:1px solid #ccc}
@@ -396,27 +467,74 @@ input[type=date]{color-scheme:light}
 
 <!-- APP -->
 <div id="app">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="logo" style="display:flex;align-items:center;gap:10px"><div style="background:rgba(255,255,255,.15);border-radius:8px;padding:5px 8px;font-size:16px">🏥</div><div><div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px">NF Sistema</div><div style="font-size:10px;color:rgba(255,255,255,.65);font-weight:500;letter-spacing:.05em">AHVN · Compras</div></div></div>
-      <nav class="nav">
-        <button class="nav-btn active" data-page="dashboard" onclick="goPage('dashboard',this)" id="navDashboard">📊 <span>Dashboard</span></button>
-        <button class="nav-btn" data-page="notas" onclick="goPage('notas',this)">📄 <span>Notas Fiscais</span></button>
-        <button class="nav-btn" data-page="aprovacao" onclick="goPage('aprovacao',this)" id="navAprov">✅ <span>Aprovação</span></button>
-        <button class="nav-btn" data-page="fornecedores" onclick="goPage('fornecedores',this)">🏢 <span>Fornecedores</span></button>
-        <button class="nav-btn" data-page="relatorios" onclick="goPage('relatorios',this)" id="navRelatorios">📑 <span>Relatórios</span></button>
-        <button class="nav-btn" data-page="usuarios" onclick="goPage('usuarios',this)" id="navUsuarios" style="display:none">👥 <span>Usuários</span></button>
-      </nav>
-    </div>
-    <div class="topbar-right">
-      <div id="syncBadge" style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"></div>
-      <div class="user-badge">
-        <span id="userNameBadge">–</span>
-        <span id="userRoleBadge" class="user-role">–</span>
+  <!-- ═══ SIDEBAR ═════════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">🏥</div>
+      <div class="sidebar-brand-text">
+        <div class="title">NF Sistema</div>
+        <div class="sub">AHVN · Compras</div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sair</button>
     </div>
-  </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">Principal</div>
+      <button class="nav-btn active" data-page="dashboard" onclick="goPage('dashboard',this)" id="navDashboard">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </button>
+      <button class="nav-btn" data-page="notas" onclick="goPage('notas',this)">
+        <span class="nav-icon">📄</span><span>Notas Fiscais</span>
+      </button>
+      <button class="nav-btn" data-page="aprovacao" onclick="goPage('aprovacao',this)" id="navAprov">
+        <span class="nav-icon">✅</span><span>Aprovação</span>
+        <span class="nav-badge" id="badgeAprov" style="display:none">0</span>
+      </button>
+
+      <div class="nav-group-label">Cadastros</div>
+      <button class="nav-btn" data-page="fornecedores" onclick="goPage('fornecedores',this)">
+        <span class="nav-icon">🏢</span><span>Fornecedores</span>
+      </button>
+
+      <div class="nav-group-label" id="labelAnalise">Análise</div>
+      <button class="nav-btn" data-page="relatorios" onclick="goPage('relatorios',this)" id="navRelatorios">
+        <span class="nav-icon">📑</span><span>Relatórios</span>
+      </button>
+
+      <div class="nav-group-label" id="labelAdmin" style="display:none">Administração</div>
+      <button class="nav-btn" data-page="contas" onclick="goPage('contas',this)" id="navContas" style="display:none">
+        <span class="nav-icon">🏷️</span><span>Contas</span>
+      </button>
+      <button class="nav-btn" data-page="usuarios" onclick="goPage('usuarios',this)" id="navUsuarios" style="display:none">
+        <span class="nav-icon">👥</span><span>Usuários</span>
+        <span class="nav-badge" id="badgePendentes" style="display:none">0</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="userNameBadge">–</div>
+          <div class="role-tag" id="userRoleBadge">–</div>
+        </div>
+      </div>
+      <div class="sidebar-sync" id="syncBadge"></div>
+      <button class="btn btn-ghost btn-sm btn-sair" onclick="doLogout()" style="width:100%;justify-content:center;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2)">
+        ← Sair do sistema
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══ CONTEÚDO ═══════════════════════════════════════════════════ -->
+  <div class="main-wrapper">
+    <div class="main-header">
+      <div class="main-header-title" id="mainHeaderTitle">
+        <span>Dashboard</span><span class="breadcrumb">/ Visão Geral</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--muted)" id="mainHeaderDate"></div>
+      </div>
+    </div>
 
   <div class="main">
 
@@ -1118,8 +1236,9 @@ async function loadData() {
   notas = resNotas.ok ? resNotas.notas : [];
   fornecedores = resForn.ok ? resForn.fornecedores : [];
   if (results[2] && results[2].ok) {
-    window._totalJurosGAS = results[2].totalJuros || 0;
-    window._totalMultaGAS = results[2].totalMulta || 0;
+    window._totalJurosGAS   = results[2].totalJuros  || 0;
+    window._totalMultaGAS   = results[2].totalMulta  || 0;
+    window._acrescimosGAS   = results[2].registros   || [];
   }
   normalizarNotas();
   setSyncBadge(resNotas.ok && resForn.ok ? 'ok' : 'erro');
@@ -1137,6 +1256,10 @@ async function reloadNotas() {
 
 // Garante um "id" único (numero_ano) e historico vazio para cada NF vinda do backend
 function normalizarNotas() {
+  // Atualiza badge de aprovações pendentes na sidebar
+  const pending = notas.filter(n=>(n.validacao||'').toUpperCase().includes('AGUARDANDO')).length;
+  const badgeA = document.getElementById('badgeAprov');
+  if(badgeA){ badgeA.textContent=pending; badgeA.style.display=pending>0?'':'none'; }
   notas.forEach(n => {
     n.id = n.numero + '_' + n.ano;
     if (!n.historico) n.historico = [];
@@ -1181,22 +1304,27 @@ async function doLogin() {
   const rb = document.getElementById('userRoleBadge');
   rb.textContent = currentUser.isMaster ? 'Master' : currentUser.role === 'admin' ? 'Administrador' : 'Operador';
   rb.className = 'user-role ' + (currentUser.isMaster?'role-master':currentUser.role==='admin'?'role-admin':'role-operador');
+  // Avatar com inicial
+  const av = document.getElementById('sidebarAvatar');
+  if(av && currentUser.nome) av.textContent = currentUser.nome.charAt(0).toUpperCase();
 
   aplicarPermissoes();
 
-  await loadData();
-  populateSelects();
-  renderNotas();
-  renderFornecedores();
-
-  // Dashboard só para admin/master — operador cai em Notas
+  // Mostra a tela imediatamente — dados carregam em background
   if (currentUser.role === 'admin') {
-    renderDashboard();
     goPage('dashboard', document.getElementById('navDashboard'));
   } else {
-    // Operador: cai direto em Notas (sem status de pagamento)
     goPage('notas', document.querySelector('[data-page="notas"]'));
   }
+
+  // Carrega dados em paralelo sem bloquear a UI
+  loadData().then(() => {
+    populateSelects();
+    popularSelectsContas();
+    renderNotas();
+    renderFornecedores();
+    if (currentUser.role === 'admin') renderDashboard();
+  });
 }
 document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPass').focus(); });
@@ -1296,6 +1424,10 @@ function aplicarPermissoes() {
   const btnNova = document.getElementById('btnNovaNote');
   if (btnNova) btnNova.style.display = '';
 
+  // Mostrar/ocultar seção admin na sidebar
+  const lblAdmin = document.getElementById('labelAdmin');
+  if(lblAdmin) lblAdmin.style.display = (role==='admin')?'':'none';
+
   // Ocultar filtro de status (pagamento) para operador
   document.querySelectorAll('.status-pag-opt').forEach(opt => {
     opt.style.display = (role==='admin') ? '' : 'none';
@@ -1344,6 +1476,21 @@ function goPage(id, btn) {
   if(id==='relatorios') populateRelFornSelect();
   if(id==='dashboard') renderDashboard();
   if(id==='usuarios') renderUsuarios();
+  if(id==='contas') renderListaContas();
+
+  // Atualizar título do header
+  const _titles = {
+    dashboard:    ['📊 Dashboard',      'Visão Geral'],
+    notas:        ['📄 Notas Fiscais',   'Gestão de NFs'],
+    aprovacao:    ['✅ Aprovação',        'Fila de Validação'],
+    fornecedores: ['🏢 Fornecedores',    'Cadastro'],
+    relatorios:   ['📑 Relatórios',      'Exportação e Análise'],
+    contas:       ['🏷️ Contas',          'Financeiras'],
+    usuarios:     ['👥 Usuários',         'Gestão de Acesso'],
+  };
+  const [_t, _s] = _titles[id] || [id, ''];
+  const _hEl = document.getElementById('mainHeaderTitle');
+  if (_hEl) _hEl.innerHTML = `<span>${_t}</span><span class="breadcrumb">/ ${_s}</span>`;
 }
 
 // ====================================================
@@ -2367,38 +2514,20 @@ function renderDashboard() {
   renderChart('chartForn','bar',fornTop.map(x=>x[0]),fornTop.map(x=>x[1]),['#1e6647'],true,true);
 
   // ── KPI Multas/Juros por Fornecedor ─────────────────────────────────────────
-  // Calcula acréscimos reais: valor pago - valor original (quando há pagamento)
+  // FONTE ÚNICA: aba ACRESCIMOS do GAS (só tem dados quando juros/multa > 0)
   const acrescMap={};
-  filtered.forEach(nf=>{
-    const fn=nf.fornecedor||'—';
-    (nf.parcelas||[]).forEach(p=>{
-      const sit=String(p.situacao||'').toUpperCase();
-      if(sit!=='PAGO') return;
-      const vOrig  = parseMoney(p.valor);
-      const vPago  = parseMoney(p.valorPago||p.valor);
-      const acrescimo = Math.max(0, vPago - vOrig);
-      if(acrescimo>0){
-        if(!acrescMap[fn]) acrescMap[fn]={juros:0,multa:0,total:0,notas:0};
-        // Usa dados do GAS (ACRESCIMOS) se disponível, senão usa a diferença
-        acrescMap[fn].total += acrescimo;
-        acrescMap[fn].notas++;
-      }
-    });
-  });
-  // Complementa com dados vindos da aba ACRESCIMOS do GAS (mais preciso)
   if(window._acrescimosGAS && window._acrescimosGAS.length){
-    const acrescGAS={};
     window._acrescimosGAS.forEach(r=>{
-      const fn=r.fornecedor||'—';
-      if(!acrescGAS[fn]) acrescGAS[fn]={juros:0,multa:0,total:0};
-      acrescGAS[fn].juros += parseMoney(r.juros||0);
-      acrescGAS[fn].multa += parseMoney(r.multa||0);
-      acrescGAS[fn].total += parseMoney(r.total||0);
+      const fn=String(r.fornecedor||'').trim()||'—';
+      const j=parseMoney(r.juros||0), m=parseMoney(r.multa||0);
+      const tot=parseMoney(r.total||0)||(j+m);
+      if(tot<=0) return; // ignora registros sem acréscimo real
+      if(!acrescMap[fn]) acrescMap[fn]={juros:0,multa:0,total:0,count:0};
+      acrescMap[fn].juros  += j;
+      acrescMap[fn].multa  += m;
+      acrescMap[fn].total  += tot;
+      acrescMap[fn].count  += 1;
     });
-    // Substitui pelo dado GAS (mais preciso)
-    Object.assign(acrescMap, Object.fromEntries(
-      Object.entries(acrescGAS).map(([k,v])=>[k,{...v, notas:(acrescMap[k]?.notas||0)}])
-    ));
   }
   const acrescTop=Object.entries(acrescMap)
     .filter(([,v])=>v.total>0)
@@ -2467,7 +2596,11 @@ function renderKpiAcrescimos(lista) {
   const el = document.getElementById('kpiAcrescimos');
   if (!el) return;
   if (!lista.length) {
-    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">✅ Nenhum acréscimo registrado no período.</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:32px 24px">
+      <div style="font-size:32px;margin-bottom:8px">✅</div>
+      <div style="font-weight:700;color:var(--accent);margin-bottom:4px">Sem acréscimos registrados</div>
+      <div style="font-size:12px;color:var(--muted)">Nenhum pagamento com juros ou multa foi registrado ainda.<br>Os dados aparecerão aqui quando houver baixas com acréscimos (coluna Juros/Multa preenchida).</div>
+    </div>`;
     return;
   }
   const max = lista[0][1].total;
@@ -2483,16 +2616,16 @@ function renderKpiAcrescimos(lista) {
       <tbody>
         ${lista.map(([fn,v],i)=>{
           const pct = max>0 ? Math.round((v.total/max)*100) : 0;
-          const bar = `<div style="background:#fee2e2;border-radius:4px;height:8px;width:100%;overflow:hidden">
-            <div style="background:#dc2626;height:8px;width:${pct}%;border-radius:4px;transition:width .5s"></div></div>`;
-          const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
+          const bar = `<div style="background:#fee2e2;border-radius:6px;height:10px;width:100%;overflow:hidden"><div style="background:linear-gradient(90deg,#dc2626,#ef4444);height:10px;width:${pct}%;border-radius:6px;transition:width .6s ease"></div></div>`;
+          const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700;font-family:monospace">#${i+1}</span>`;
+          const nomeForn = fn && fn!=='—' ? fn : '<em style="color:var(--muted)">—</em>';
           return `<tr>
-            <td>${rank}</td>
-            <td><strong>${fn}</strong></td>
-            <td style="text-align:right;color:#d97706;font-family:monospace">${fmtMoney(v.juros||0)}</td>
-            <td style="text-align:right;color:#dc2626;font-family:monospace">${fmtMoney(v.multa||0)}</td>
-            <td style="text-align:right;font-weight:700;color:#b91c1c;font-family:monospace">${fmtMoney(v.total)}</td>
-            <td style="min-width:120px">${bar}</td>
+            <td style="width:40px;text-align:center">${rank}</td>
+            <td><strong>${nomeForn}</strong><br><span style="font-size:11px;color:var(--muted)">${v.count} baixa(s) com acréscimo</span></td>
+            <td style="text-align:right;color:#b45309;font-family:monospace;font-weight:600">${fmtMoney(v.juros||0)}</td>
+            <td style="text-align:right;color:#b91c1c;font-family:monospace;font-weight:600">${fmtMoney(v.multa||0)}</td>
+            <td style="text-align:right;font-weight:800;color:#991b1b;font-family:monospace;font-size:14px">${fmtMoney(v.total)}</td>
+            <td style="min-width:140px;padding-right:8px">${bar}<div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px">${pct}%</div></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -2766,6 +2899,76 @@ function gerarRelatorioPDF(tipo) {
 .alert-section{margin-bottom:16px;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
 .page-header h2{border-left:4px solid var(--accent);padding-left:12px}
 .right{text-align:right}
+
+/* ═══ SIDEBAR REFINAMENTOS ══════════════════════════════════════════ */
+.sidebar-nav::-webkit-scrollbar{width:4px}
+.sidebar-nav::-webkit-scrollbar-track{background:transparent}
+.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+.main::-webkit-scrollbar{width:6px}
+.main::-webkit-scrollbar-track{background:var(--bg)}
+.main::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.page{padding:28px 32px!important}
+
+/* ═══ KPI CARDS REDESIGN ════════════════════════════════════════════ */
+.kpi{border-radius:14px!important;padding:20px 22px!important;transition:all .2s!important}
+.kpi:hover{transform:translateY(-2px)!important;box-shadow:0 8px 24px rgba(0,0,0,.1)!important}
+.kpi-value{font-size:24px!important;font-weight:800!important;letter-spacing:-.5px!important}
+.kpi::before{height:4px!important;border-radius:14px 14px 0 0!important}
+
+/* ═══ TABELAS ════════════════════════════════════════════════════════ */
+.table-wrap{border-radius:14px!important}
+.tbl th:first-child{border-radius:0}
+.tbl{border-spacing:0}
+
+/* ═══ BOTÕES ══════════════════════════════════════════════════════ */
+.btn{border-radius:10px!important;font-weight:600!important}
+.btn-sm{padding:6px 12px!important;font-size:12px!important;border-radius:8px!important}
+
+/* ═══ MODAIS ═════════════════════════════════════════════════════════ */
+.modal{border-radius:20px!important;max-width:920px!important}
+.modal-header{border-radius:20px 20px 0 0!important}
+
+/* ═══ MOBILE RESPONSIVO ══════════════════════════════════════════════ */
+@media(max-width:900px){
+  .sidebar{width:64px!important;min-width:64px!important}
+  .sidebar-brand-text,.nav-btn span:not(.nav-badge),.nav-group-label,
+  .sidebar-user-info,.sidebar-sync{display:none!important}
+  .sidebar-brand{justify-content:center;padding:20px 12px!important}
+  .nav-btn{justify-content:center!important;padding:12px!important}
+  .nav-btn .nav-icon{width:auto!important;font-size:18px!important}
+  .nav-btn.active::before{left:auto;right:0;top:0;bottom:0;height:auto;width:3px;transform:none}
+  .main-wrapper{min-width:0}
+  .page{padding:16px!important}
+}
+
+/* ═══ LOADING SKELETON ═══════════════════════════════════════════════ */
+.skeleton{background:linear-gradient(90deg,#f0f4f2 25%,#e8f0ec 50%,#f0f4f2 75%);
+  background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ═══ CHART CARDS ════════════════════════════════════════════════════ */
+.chart-card{border-radius:14px!important;padding:22px 24px!important}
+.chart-title{font-size:13px!important;font-weight:700!important;color:var(--text)!important;
+  display:flex;align-items:center;gap:8px;margin-bottom:18px!important}
+.chart-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;display:inline-block}
+
+/* ═══ NOTICE ════════════════════════════════════════════════════════ */
+.notice{border-radius:10px!important;padding:14px 18px!important}
+.notice-info{border-left:4px solid var(--accent)!important;background:var(--accent-pale)!important}
+.notice-warn{border-left:4px solid var(--yellow)!important;background:var(--yellow-pale)!important}
+.notice-error{border-left:4px solid var(--red)!important;background:var(--red-pale)!important}
+
+/* ═══ APROVAÇÃO CARDS ════════════════════════════════════════════════ */
+.chart-card[style*="border-left"]{transition:all .2s}
+.chart-card[style*="border-left"]:hover{transform:translateX(2px);box-shadow:var(--shadow-md)}
+
+/* ═══ PAGE HEADER ════════════════════════════════════════════════════ */
+.page-header h2{font-size:20px!important;font-weight:800!important;
+  color:var(--text)!important;border-left:none!important;padding-left:0!important}
+
+/* ═══ PERFORMANCE: will-change para animações ════════════════════════ */
+.kpi,.chart-card,.sidebar,.modal{will-change:transform}
+.page{will-change:opacity}
 </style>`;
   const titulo = titulos[tipo] || tipo;
   let cabecalho = '', rows = '', totalRow = '';
