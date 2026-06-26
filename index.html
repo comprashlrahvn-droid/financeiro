@@ -8,28 +8,37 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg: #0e1512;
-  --surface: #161f1b;
-  --surface2: #1e2b25;
-  --border: #2a3a33;
-  --accent: #2f7d5e;
-  --accent2: #c1272d;
-  --accent-grad: linear-gradient(135deg,#2f7d5e 0%,#1f5f45 100%);
-  --green: #10b981;
-  --red: #ef4444;
-  --yellow: #f59e0b;
-  --orange: #f97316;
-  --text: #f1f5f9;
-  --muted: #aab8d1;
-  --radius: 10px;
+  --bg:          #f0f4f2;
+  --surface:     #ffffff;
+  --surface2:    #f7faf8;
+  --border:      #d6e4dc;
+  --accent:      #1e6647;
+  --accent2:     #c1272d;
+  --accent-grad: linear-gradient(135deg,#1e6647 0%,#2f7d5e 100%);
+  --green:       #16a34a;
+  --red:         #dc2626;
+  --yellow:      #d97706;
+  --orange:      #ea580c;
+  --text:        #111827;
+  --muted:       #6b7280;
+  --radius:      12px;
   --font: 'Inter', system-ui, sans-serif;
+  --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:   0 4px 12px rgba(0,0,0,.08);
+  --accent-pale: #e8f5ee;
+  --red-pale:    #fef2f2;
+  --green-pale:  #f0fdf4;
+  --yellow-pale: #fffbeb;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 a{color:var(--accent);text-decoration:none}
+*{box-sizing:border-box;margin:0;padding:0}
 
 /* ── LOGIN / CADASTRO ─────────────────────────────── */
 #loginScreen,#registerScreen{
+  background:linear-gradient(135deg,#f0f9f4 0%,#e8f5ee 40%,#d1ece0 100%);
+  
   display:none;align-items:center;justify-content:center;min-height:100vh;
   background:linear-gradient(135deg,#0d3d20 0%,#1a5c32 30%,#2f7d5e 55%,#8b3a1a 80%,#c1272d 100%);
   position:relative;overflow:hidden;
@@ -101,9 +110,9 @@ a{color:var(--accent);text-decoration:none}
 .lf-group .hint{font-size:11px;color:#475569;margin-top:5px}
 .form-group{margin-bottom:18px}
 .form-group label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:var(--font);transition:border-color .2s}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
-.form-group select option{background:var(--surface)}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:#f7faf8;border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:var(--font);transition:border-color .2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(30,102,71,.1)}
+.form-group select option{background:#ffffff}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--font)}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--accent-grad);color:#fff;box-shadow:0 2px 10px #2f7d5e40}
@@ -123,24 +132,24 @@ a{color:var(--accent);text-decoration:none}
 
 /* LAYOUT */
 #app{display:none;flex-direction:column;min-height:100vh}
-.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar{background:var(--accent);border-bottom:none;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .topbar-left{display:flex;align-items:center;gap:16px}
 .logo{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
-.logo span{color:var(--accent)}
+.logo span{color:#a7e8cc}
 .nav{display:flex;gap:2px}
-.nav-btn{padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;font-family:var(--font);transition:all .15s;display:flex;align-items:center;gap:6px;position:relative}
-.nav-btn:hover{color:var(--text);background:var(--surface2)}
-.nav-btn.active{color:#fff;background:var(--accent-grad)}
+.nav-btn{padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,0.75);border:none;background:none;font-family:var(--font);transition:all .15s;display:flex;align-items:center;gap:6px;position:relative}
+.nav-btn:hover{color:#ffffff;background:rgba(255,255,255,0.15)}
+.nav-btn.active{color:#ffffff;background:rgba(255,255,255,0.2);font-weight:700}
 .topbar-right{display:flex;align-items:center;gap:12px}
-.user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:6px 12px;font-size:13px}
-.user-role{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:4px}
+.user-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;font-size:13px}
+.user-role{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.2);color:#ffffff}
 .usr-tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
 .usr-tab:hover{color:var(--text)}
 .usr-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.role-master{background:#7c3aed30;color:#c4b5fd}
-.role-admin{background:#2f7d5e35;color:#a7e8cc}
-.role-operador{background:#10b98120;color:#6ee7b7}
-.role-pendente{background:#dc262630;color:#fca5a5}
+.role-master{background:#ede9fe;color:#5b21b6}
+.role-admin{background:#d1fae5;color:#065f46}
+.role-operador{background:#e0f2fe;color:#0369a1}
+.role-pendente{background:#fee2e2;color:#991b1b}
 
 /* MAIN */
 .main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%}
@@ -149,7 +158,7 @@ a{color:var(--accent);text-decoration:none}
 
 /* DASHBOARD */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden}
+.kpi{background:#ffffff;border:1px solid var(--border);box-shadow:var(--shadow);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent)}
 .kpi.red::before{background:var(--red)}
 .kpi.green::before{background:var(--green)}
@@ -157,9 +166,9 @@ a{color:var(--accent);text-decoration:none}
 .kpi.orange::before{background:var(--orange)}
 .kpi-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .kpi-value{font-size:28px;font-weight:800;line-height:1}
-.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;font-weight:500}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.chart-card{background:#ffffff;border:1px solid var(--border);box-shadow:var(--shadow);border-radius:var(--radius);padding:20px}
 .chart-title{font-size:13px;font-weight:700;margin-bottom:16px;color:var(--text)}
 .chart-wrap{position:relative;height:220px}
 
@@ -171,16 +180,16 @@ a{color:var(--accent);text-decoration:none}
 .alert-table{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden}
 
 /* TABLE */
-.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-wrap{background:#ffffff;border:1px solid var(--border);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
 .table-toolbar{padding:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
-.search-box{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:var(--font)}
+.search-box{flex:1;min-width:200px;background:#f7faf8;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:var(--font)}
 .search-box:focus{outline:none;border-color:var(--accent)}
 .tbl{width:100%;border-collapse:collapse}
-.tbl th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
-.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;color:var(--text)}
+.tbl th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f7faf8;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:10px 14px;border-bottom:1px solid #eef3f0;font-size:13px;vertical-align:middle;color:var(--text)}
 .tbl td strong{color:#fff}
 .tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:var(--surface2)}
+.tbl tr:hover td{background:#f0f9f4}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;border:1px solid transparent}
 .badge-pago{background:#10b98135;color:#6ee7b7;border-color:#10b98155}
 .badge-vencida{background:#ef444435;color:#fecaca;border-color:#ef444455}
@@ -202,19 +211,19 @@ a{color:var(--accent);text-decoration:none}
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px}
 .modal-overlay.open{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:860px;position:relative;margin:auto}
-.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal{background:#ffffff;border:1px solid var(--border);box-shadow:var(--shadow-md);border-radius:16px;width:100%;max-width:860px;position:relative;margin:auto}
+.modal-header{padding:20px 24px;border-bottom:1px solid #eef3f0;display:flex;align-items:center;justify-content:space-between;background:#f7faf8}
 .modal-title{font-size:16px;font-weight:700}
 .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px;line-height:1}
 .modal-body{padding:24px}
-.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.modal-footer{padding:16px 24px;border-top:1px solid #eef3f0;display:flex;justify-content:flex-end;gap:10px}
 .section-title{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;margin-top:8px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
 .form-grid.col1{grid-template-columns:1fr}
 .span2{grid-column:span 2}
 .span3{grid-column:span 3}
-.parcela-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
+.parcela-block{background:#f7faf8;border:1px solid #d6e4dc;border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
 .parcela-block h4{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px}
 .xml-drop{border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
 .xml-drop:hover{border-color:var(--accent);background:#2f7d5e15}
@@ -222,9 +231,9 @@ a{color:var(--accent);text-decoration:none}
 .xml-icon{font-size:32px;margin-bottom:8px}
 .xml-text{color:var(--muted);font-size:13px}
 .xml-text strong{color:var(--accent)}
-.tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--bg);border-radius:8px;padding:4px}
+.tabs{display:flex;gap:2px;margin-bottom:20px;background:#eef3f0;border-radius:8px;padding:4px}
 .tab{padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;font-family:var(--font);transition:all .2s}
-.tab.active{background:var(--surface);color:var(--text)}
+.tab.active{background:#ffffff;color:var(--text)}
 .tab-content{display:none}
 .tab-content.active{display:block}
 .info-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:var(--bg);border-radius:8px;padding:16px;margin-bottom:16px}
@@ -242,14 +251,14 @@ a{color:var(--accent);text-decoration:none}
 .timeline-content span{font-size:11px;color:var(--muted)}
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
 .stat-row:last-child{border:none}
-.notice{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:8px}
+.notice{padding:14px 18px;border-radius:10px;font-size:13px;margin-bottom:16px;border-left:4px solid;display:flex;align-items:flex-start;gap:8px}
 .notice-info{background:#2f7d5e22;border:1px solid #2f7d5e55;color:#a7e8cc}
 .notice-warn{background:#f59e0b20;border:1px solid #f59e0b40;color:#fcd34d}
 .notice-success{background:#10b98120;border:1px solid #10b98140;color:#6ee7b7}
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty .eicon{font-size:40px;margin-bottom:12px}
 .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-select.filter{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;font-family:var(--font);cursor:pointer}
+select.filter{background:#f7faf8;border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;font-family:var(--font);cursor:pointer}
 select.filter:focus{outline:none;border-color:var(--accent)}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
 .page-header h2{font-size:20px;font-weight:800}
@@ -286,6 +295,14 @@ select.filter:focus{outline:none;border-color:var(--accent)}
   .main{padding:12px}
   .nav-btn span{display:none}
 }
+
+/* ── MELHORIAS VISUAIS GERAIS ── */
+.page-header h2{font-size:22px;font-weight:800;color:var(--accent);letter-spacing:-0.5px}
+.kpi-icon{font-size:28px;margin-bottom:8px}
+.card-row{display:grid;gap:16px}
+.topbar-divider{width:1px;height:24px;background:rgba(255,255,255,0.2);margin:0 4px}
+input[type=date]{color-scheme:light}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80}
 </style>
 </head>
 <body>
@@ -381,7 +398,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
 <div id="app">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="logo">📋 <span>NF</span>Sistema</div>
+      <div class="logo" style="display:flex;align-items:center;gap:10px"><div style="background:rgba(255,255,255,.15);border-radius:8px;padding:5px 8px;font-size:16px">🏥</div><div><div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px">NF Sistema</div><div style="font-size:10px;color:rgba(255,255,255,.65);font-weight:500;letter-spacing:.05em">AHVN · Compras</div></div></div>
       <nav class="nav">
         <button class="nav-btn active" data-page="dashboard" onclick="goPage('dashboard',this)" id="navDashboard">📊 <span>Dashboard</span></button>
         <button class="nav-btn" data-page="notas" onclick="goPage('notas',this)">📄 <span>Notas Fiscais</span></button>
@@ -435,6 +452,20 @@ select.filter:focus{outline:none;border-color:var(--accent)}
           <div class="chart-wrap"><canvas id="chartForn"></canvas></div>
         </div>
       </div>
+
+      <!-- KPI Acréscimos por Fornecedor -->
+      <div class="chart-card" style="margin-bottom:24px;border-top:3px solid #dc2626">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="chart-title" style="margin:0;font-size:15px">⚠️ Fornecedores com Maiores Acréscimos (Juros + Multa)</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">Diferença entre valor original da parcela e valor efetivamente pago</div>
+          </div>
+        </div>
+        <div id="kpiAcrescimos">
+          <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Aguardando dados...</div>
+        </div>
+      </div>
+
       <div id="alertasSection"></div>
     </div>
 
@@ -513,10 +544,11 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         <div class="table-toolbar" style="gap:8px;flex-wrap:wrap">
           <input class="search-box" id="searchAprovacao" placeholder="🔍 Buscar por NF, fornecedor ou CNPJ..." oninput="filterAprovacao()" style="flex:1;min-width:220px">
           <select class="filter" id="filtAprovStatus" onchange="filterAprovacao()">
-            <option value="">Todos os status</option>
-            <option value="AGUARDANDO">Aguardando</option>
-            <option value="VALIDADO">Validado</option>
-            <option value="RECUSADO">Recusado</option>
+            <option value="">⏳ Aguardando aprovação</option>
+            <option value="TODAS">📋 Todas as notas</option>
+            <option value="AGUARDANDO">⏳ Aguardando</option>
+            <option value="VALIDADO">✅ Validadas</option>
+            <option value="RECUSADO">❌ Recusadas</option>
           </select>
           <select class="filter" id="filtAprovAno" onchange="filterAprovacao()">
             <option value="">Todos anos</option>
@@ -653,11 +685,41 @@ select.filter:focus{outline:none;border-color:var(--accent)}
             <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('vencPeriodo')">📄 PDF</button>
           </div>
         </div>
-      </div>
+        <!-- BAIXAS por Data de Pagamento / Fornecedor -->
+        <div class="chart-card" style="grid-column:span 2;border-top:3px solid var(--green)">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+            <div style="font-size:32px">💰</div>
+            <div>
+              <div style="font-size:16px;font-weight:700">Relatório de Baixas (Pagamentos Realizados)</div>
+              <div style="color:var(--muted);font-size:13px">Parcelas efetivamente pagas — filtre por fornecedor e/ou período de pagamento</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end;margin-bottom:14px">
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fornecedor</label>
+              <select id="relBaixaFornecedor" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px">
+                <option value="">Todos os fornecedores</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Pagamento de</label>
+              <input type="date" id="relBaixaDe" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Pagamento até</label>
+              <input type="date" id="relBaixaAte" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-success" onclick="gerarRelatorio('baixas')">🔍 Gerar Relatório de Baixas</button>
+            <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('baixas')">📥 XLS</button>
+            <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('baixas')">📄 PDF</button>
+          </div>
+        </div>
+
+      </div><!-- /relGrid -->
       <div id="relResultado" style="margin-top:24px"></div>
     </div>
-
-    <!-- USUÁRIOS (somente Administrador Master) -->
     <div id="page-usuarios" class="page">
       <div class="page-header">
         <h2>Gestão de Usuários</h2>
@@ -920,7 +982,7 @@ select.filter:focus{outline:none;border-color:var(--accent)}
         </div>
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--muted);line-height:1.6">
           ⚖️ <strong style="color:var(--text)">Fluxo automático:</strong><br>
-          Vencida → <span style="color:#ddd6fe">Trânsito de Cartório</span> (após X dias) → <span style="color:#fed7aa">Em Cartório</span> (manual) → <span style="color:#fca5a5">Protestada</span> (manual)
+          Vencida → <span style="color:#ddd6fe">Trânsito de Cartório</span> (após X dias) → <span style="color:#fed7aa">Em Cartório</span> (manual) → <span style="color:#b91c1c;font-weight:600">Protestada</span> (manual)
         </div>
       </div>
     </div>
@@ -1404,12 +1466,25 @@ function populateSelects() {
   });
 }
 function populateRelFornSelect() {
-  const el = document.getElementById('relFornecedor');
-  if(!el) return;
-  el.innerHTML = '<option value="">Todos os fornecedores</option>';
-  fornecedores.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(f=>{
-    el.innerHTML += `<option value="${f.nome}">${f.nome}</option>`;
+  const ids = ['relFornecedor', 'relBaixaFornecedor'];
+  ids.forEach(selId => {
+    const el = document.getElementById(selId);
+    if (!el) return;
+    el.innerHTML = '<option value="">Todos os fornecedores</option>';
+    fornecedores.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(f=>{
+      el.innerHTML += `<option value="${f.nome}">${f.nome}</option>`;
+    });
   });
+  // Inicializa datas do relatório de baixas com mês atual
+  const bdEl = document.getElementById('relBaixaDe');
+  const baEl = document.getElementById('relBaixaAte');
+  if (bdEl && !bdEl.value) {
+    const primeiroDia = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    bdEl.value = primeiroDia.toISOString().slice(0,10);
+  }
+  if (baEl && !baEl.value) {
+    baEl.value = today();
+  }
 }
 function preencherCNPJ() {
   const nome = document.getElementById('nfFornecedor').value;
@@ -1905,14 +1980,26 @@ async function excluirNF(id) {
 // ====================================================
 function filterAprovacao() {
   const q = (document.getElementById('searchAprovacao')?.value||'').toLowerCase();
-  const stFilt = (document.getElementById('filtAprovStatus')?.value||'').toUpperCase();
+  const stFilt = (document.getElementById('filtAprovStatus')?.value||'');
   const anoFilt = document.getElementById('filtAprovAno')?.value||'';
+
   const lista = notas.filter(nf => {
     if (anoFilt && nf.ano !== anoFilt) return false;
     const valid = String(nf.validacao||'').toUpperCase();
-    if (stFilt==='AGUARDANDO' && valid.indexOf('AGUARDANDO')===-1) return false;
-    if (stFilt==='VALIDADO'   && valid!=='VALIDADO') return false;
-    if (stFilt==='RECUSADO'   && valid.indexOf('RECUSADO')===-1) return false;
+
+    // Por padrão (sem filtro selecionado) mostra APENAS aguardando validação
+    if (!stFilt) {
+      if (valid.indexOf('AGUARDANDO') === -1) return false;
+    } else if (stFilt === 'AGUARDANDO') {
+      if (valid.indexOf('AGUARDANDO') === -1) return false;
+    } else if (stFilt === 'VALIDADO') {
+      if (valid !== 'VALIDADO') return false;
+    } else if (stFilt === 'RECUSADO') {
+      if (valid.indexOf('RECUSADO') === -1) return false;
+    } else if (stFilt === 'TODAS') {
+      // sem filtro adicional — mostra todas
+    }
+
     if (q && !(nf.numero+' '+nf.fornecedor+' '+(nf.cnpj||'')).toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1926,7 +2013,11 @@ function renderAprovacao() {
 function _renderAprovacaoLista(lista) {
   const div = document.getElementById('aprovacaoList');
   if (!lista.length) {
-    div.innerHTML = `<div class="empty" style="padding:40px 0">📭 Nenhuma nota encontrada com esses filtros.</div>`;
+    const stFilt = document.getElementById('filtAprovStatus')?.value||'';
+    const msg = !stFilt
+      ? '✅ Nenhuma nota aguardando aprovação no momento.'
+      : '📭 Nenhuma nota encontrada com esses filtros.';
+    div.innerHTML = `<div class="empty" style="padding:40px 0">${msg}</div>`;
     return;
   }
   const showPag = canVerPagamento();
@@ -2273,7 +2364,47 @@ function renderDashboard() {
   const fornMap={};
   filtered.forEach(n=>{const f=n.fornecedor||'—';fornMap[f]=(fornMap[f]||0)+parseMoney(n.valorTotal);});
   const fornTop=Object.entries(fornMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  renderChart('chartForn','bar',fornTop.map(x=>x[0]),fornTop.map(x=>x[1]),['#f97316'],true,true);
+  renderChart('chartForn','bar',fornTop.map(x=>x[0]),fornTop.map(x=>x[1]),['#1e6647'],true,true);
+
+  // ── KPI Multas/Juros por Fornecedor ─────────────────────────────────────────
+  // Calcula acréscimos reais: valor pago - valor original (quando há pagamento)
+  const acrescMap={};
+  filtered.forEach(nf=>{
+    const fn=nf.fornecedor||'—';
+    (nf.parcelas||[]).forEach(p=>{
+      const sit=String(p.situacao||'').toUpperCase();
+      if(sit!=='PAGO') return;
+      const vOrig  = parseMoney(p.valor);
+      const vPago  = parseMoney(p.valorPago||p.valor);
+      const acrescimo = Math.max(0, vPago - vOrig);
+      if(acrescimo>0){
+        if(!acrescMap[fn]) acrescMap[fn]={juros:0,multa:0,total:0,notas:0};
+        // Usa dados do GAS (ACRESCIMOS) se disponível, senão usa a diferença
+        acrescMap[fn].total += acrescimo;
+        acrescMap[fn].notas++;
+      }
+    });
+  });
+  // Complementa com dados vindos da aba ACRESCIMOS do GAS (mais preciso)
+  if(window._acrescimosGAS && window._acrescimosGAS.length){
+    const acrescGAS={};
+    window._acrescimosGAS.forEach(r=>{
+      const fn=r.fornecedor||'—';
+      if(!acrescGAS[fn]) acrescGAS[fn]={juros:0,multa:0,total:0};
+      acrescGAS[fn].juros += parseMoney(r.juros||0);
+      acrescGAS[fn].multa += parseMoney(r.multa||0);
+      acrescGAS[fn].total += parseMoney(r.total||0);
+    });
+    // Substitui pelo dado GAS (mais preciso)
+    Object.assign(acrescMap, Object.fromEntries(
+      Object.entries(acrescGAS).map(([k,v])=>[k,{...v, notas:(acrescMap[k]?.notas||0)}])
+    ));
+  }
+  const acrescTop=Object.entries(acrescMap)
+    .filter(([,v])=>v.total>0)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .slice(0,10);
+  renderKpiAcrescimos(acrescTop);
 
   // Coleta parcelas em trânsito/cartório/protestadas para alertas
   const parcelasCartorio=[];
@@ -2308,7 +2439,7 @@ function renderDashboard() {
       <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Ação</th></tr></thead>
       <tbody>${parcelaProximas.map(({nf,p,i})=>`<tr>
         <td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${i+1}</td>
-        <td style="color:#fcd34d">${fmtDate(p.vencimento)}</td>
+        <td style="color:#92400e;font-weight:600">${fmtDate(p.vencimento)}</td>
         <td>${fmtMoney(parseMoney(p.valor))}</td>
         <td><button class="btn btn-success btn-sm" onclick="abrirBaixar('${nf.id}',${i})">💰 Baixar</button></td>
       </tr>`).join('')}</tbody></table></div></div>`;
@@ -2330,6 +2461,49 @@ function renderDashboard() {
   }
 
   alertSec.innerHTML=alertHTML;
+}
+
+function renderKpiAcrescimos(lista) {
+  const el = document.getElementById('kpiAcrescimos');
+  if (!el) return;
+  if (!lista.length) {
+    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">✅ Nenhum acréscimo registrado no período.</div>`;
+    return;
+  }
+  const max = lista[0][1].total;
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="tbl">
+      <thead><tr>
+        <th>#</th><th>Fornecedor</th>
+        <th class="right">Juros</th><th class="right">Multa</th>
+        <th class="right">Total Acréscimos</th>
+        <th>Proporção</th>
+      </tr></thead>
+      <tbody>
+        ${lista.map(([fn,v],i)=>{
+          const pct = max>0 ? Math.round((v.total/max)*100) : 0;
+          const bar = `<div style="background:#fee2e2;border-radius:4px;height:8px;width:100%;overflow:hidden">
+            <div style="background:#dc2626;height:8px;width:${pct}%;border-radius:4px;transition:width .5s"></div></div>`;
+          const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
+          return `<tr>
+            <td>${rank}</td>
+            <td><strong>${fn}</strong></td>
+            <td style="text-align:right;color:#d97706;font-family:monospace">${fmtMoney(v.juros||0)}</td>
+            <td style="text-align:right;color:#dc2626;font-family:monospace">${fmtMoney(v.multa||0)}</td>
+            <td style="text-align:right;font-weight:700;color:#b91c1c;font-family:monospace">${fmtMoney(v.total)}</td>
+            <td style="min-width:120px">${bar}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="4" style="text-align:right;font-weight:700;color:var(--muted)">TOTAL ACRÉSCIMOS:</td>
+        <td style="text-align:right;font-weight:800;color:#b91c1c;font-family:monospace">
+          ${fmtMoney(lista.reduce((s,[,v])=>s+v.total,0))}
+        </td>
+        <td></td>
+      </tr></tfoot>
+    </table></div>`;
 }
 
 function renderChart(id,type,labels,data,colors,yMoney=false,horizontal=false){
@@ -2507,18 +2681,55 @@ function getRelatorioData(tipo) {
     const fn=document.getElementById('relFornecedor').value;
     return notas.filter(n=>!fn||n.fornecedor===fn);
   }
+  if(tipo==='baixas'){
+    const fn  = document.getElementById('relBaixaFornecedor')?.value||'';
+    const de  = document.getElementById('relBaixaDe')?.value||'';
+    const ate = document.getElementById('relBaixaAte')?.value||'';
+    const rows=[];
+    notas.forEach(nf=>{
+      if(fn && nf.fornecedor!==fn) return;
+      (nf.parcelas||[]).forEach((p,i)=>{
+        const sit=String(p.situacao||'').toUpperCase();
+        if(sit!=='PAGO') return;
+        const dataPag=(p.dataPagamento||'').slice(0,10);
+        if(!dataPag) return;
+        if(de  && dataPag<de)  return;
+        if(ate && dataPag>ate) return;
+        rows.push({nf,p,idx:i+1});
+      });
+    });
+    return rows.sort((a,b)=>(a.p.dataPagamento||'').localeCompare(b.p.dataPagamento||''));
+  }
   return [];
 }
 
 function gerarRelatorioXLS(tipo) {
   const data=getRelatorioData(tipo);
-  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas'};
+  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas',baixas:'Baixas (Pagamentos Realizados)'};
   if(!data.length){alert('Nenhum dado para exportar.');return;}
   let rows;
-  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
+  if(tipo==='baixas'){
+    rows=data.map(({nf,p,idx})=>({
+      Nº_NF:      nf.numero,
+      Fornecedor: nf.fornecedor,
+      CNPJ:       nf.cnpj,
+      Parcela:    idx,
+      Vencimento: fmtDate(p.vencimento),
+      Data_Pagamento: fmtDate(p.dataPagamento),
+      Valor_Original: parseMoney(p.valor),
+      Valor_Pago:     parseMoney(p.valorPago||p.valor),
+      Conta:      nf.conta
+    }));
+    const totalPago=rows.reduce((s,r)=>s+r.Valor_Pago,0);
+    rows.push({Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Data_Pagamento:'',Valor_Original:'',Valor_Pago:totalPago,Conta:''});
+  } else if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
     rows=data.map(({nf,p,idx})=>({Nº_NF:nf.numero,Fornecedor:nf.fornecedor,CNPJ:nf.cnpj,Parcela:idx,Vencimento:fmtDate(p.vencimento),Valor:parseMoney(p.valor),Situacao:p.situacao,Conta:nf.conta}));
+    const total=rows.reduce((s,r)=>s+r.Valor,0);
+    rows.push({Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Valor:total,Situacao:'',Conta:''});
   } else {
     rows=data.map(n=>({Nº_NF:n.numero,Data_Fat:fmtDate(n.dataFat),Fornecedor:n.fornecedor,Valor_Total:parseMoney(n.valorTotal),Conta:n.conta,Status:calcStatus(n),Validacao:n.validacao}));
+    const total=rows.reduce((s,r)=>s+r.Valor_Total,0);
+    rows.push({Nº_NF:'TOTAL',Data_Fat:'',Fornecedor:'',Valor_Total:total,Conta:'',Status:'',Validacao:''});
   }
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();
@@ -2527,80 +2738,165 @@ function gerarRelatorioXLS(tipo) {
 }
 
 function gerarRelatorioPDF(tipo) {
-  const data=getRelatorioData(tipo);
-  if(!data.length){alert('Nenhum dado para exportar.');return;}
-  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas'};
-  let rows;
-  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
-    rows=data.map(({nf,p,idx})=>`<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta}</td></tr>`).join('');
-    const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulos[tipo]}</title><style>body{font-family:Arial;font-size:12px}h1{font-size:16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px}th{background:#f0f0f0}@media print{body{margin:0}}</style></head><body><h1>${titulos[tipo]}</h1><p>Gerado: ${new Date().toLocaleString('pt-BR')} | ${data.length} parcelas</p><table><thead><tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th></tr></thead><tbody>${rows}</tbody></table>
-<!-- MODAL EDITAR PARCELA -->
-<div class="modal-overlay" id="modalEditarParcela">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-header">
-      <div class="modal-title" id="editarParcelaTitle">Editar Parcela</div>
-      <button class="modal-close" onclick="closeModal('modalEditarParcela')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="editarParcelaInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Nova Data de Vencimento</label>
-          <input type="date" id="epVencimento">
-        </div>
-        <div class="form-group">
-          <label>Status da Parcela</label>
-          <select id="epStatus">
-            <option value="A VENCER">A Vencer</option>
-            <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
-            <option value="VENCIDA">Vencida</option>
-            <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
-            <option value="EM CARTÓRIO">Em Cartório</option>
-            <option value="PROTESTADA">Protestada</option>
-            <option value="PAGO">Pago</option>
-          </select>
-        </div>
-      </div>
-      <div id="epCartorioInfo" style="display:none" class="notice notice-warn">
-        ⚖️ Ao marcar como <strong>Em Cartório</strong> ou <strong>Protestada</strong>, o sistema registra que esta parcela foi encaminhada/efetivada no cartório. Informe a nova data de vencimento conforme intimação recebida.
-      </div>
-      <div class="form-group" style="margin-top:8px">
-        <label>Observação</label>
-        <input type="text" id="epObs" placeholder="Ex: Notificação recebida em 10/06/2026, prazo até 20/06">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalEditarParcela')">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarEditarParcela()">💾 Salvar alteração</button>
-    </div>
-  </div>
-</div>
-</body></html>`;
-    const w=window.open('','_blank');w.document.write(h);w.document.close();w.print();
+  const data = getRelatorioData(tipo);
+  if (!data.length) { alert('Nenhum dado para exportar.'); return; }
+  const titulos = {
+    vencidas:'Parcelas Vencidas', proximos:'Próximo Vencimento (15 dias)',
+    periodo:'Por Período de Faturamento', fornecedor:'Por Fornecedor',
+    vencPeriodo:'Vencimentos por Período', cartorio:'Cartório / Protestadas',
+    baixas:'Baixas (Pagamentos Realizados)'
+  };
+  const css = `<style>body{font-family:Arial;font-size:11px;color:#000}h1{font-size:14px;margin-bottom:4px}p{font-size:10px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#e8e8e8;font-weight:bold}tr:nth-child(even){background:#f9f9f9}tfoot tr{background:#e0ffe0;font-weight:bold}@media print{body{margin:0}}
+/* ── TEMA CLARO AHVN — refinamentos ── */
+.kpi{transition:box-shadow .2s,transform .2s}
+.kpi:hover{box-shadow:var(--shadow-md,0 4px 12px rgba(0,0,0,.1));transform:translateY(-1px)}
+.chart-card{transition:box-shadow .2s}
+.topbar .nav-btn span{font-size:13px}
+.login-title{color:var(--accent)!important}
+.login-subtitle{color:#6b7280!important}
+.lf-group input:focus,.lf-group select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(30,102,71,.1)!important;outline:none}
+.btn-primary{background:var(--accent-grad);color:#fff;box-shadow:0 2px 8px rgba(30,102,71,.25)}
+.btn-primary:hover{opacity:.9;box-shadow:0 4px 12px rgba(30,102,71,.35)}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.02em}
+.tbl thead th:first-child{border-radius:8px 0 0 0}
+.tbl thead th:last-child{border-radius:0 8px 0 0}
+.modal-overlay{background:rgba(0,0,0,0.35)!important;backdrop-filter:blur(4px)}
+.alert-section{margin-bottom:16px;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.page-header h2{border-left:4px solid var(--accent);padding-left:12px}
+.right{text-align:right}
+</style>`;
+  const titulo = titulos[tipo] || tipo;
+  let cabecalho = '', rows = '', totalRow = '';
+
+  if (tipo === 'baixas') {
+    const totalPago = data.reduce((s,{p}) => s + parseMoney(p.valorPago||p.valor), 0);
+    cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Data Pag.</th><th>Valor Pago</th><th>Conta</th></tr>';
+    rows = data.map(({nf,p,idx}) =>
+      `<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td style="color:green;font-weight:bold">${fmtDate(p.dataPagamento)}</td><td>${fmtMoney(parseMoney(p.valorPago||p.valor))}</td><td>${nf.conta||'—'}</td></tr>`
+    ).join('');
+    totalRow = `<tr><td colspan="5" style="text-align:right;font-weight:bold">TOTAL PAGO:</td><td style="font-weight:bold">${fmtMoney(totalPago)}</td><td></td></tr>`;
+  } else if (tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio') {
+    const totalValor = data.reduce((s,{p}) => s + parseMoney(p.valor), 0);
+    cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>';
+    rows = data.map(({nf,p,idx}) =>
+      `<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta||'—'}</td><td>${p.situacao||'—'}</td></tr>`
+    ).join('');
+    totalRow = `<tr><td colspan="4" style="text-align:right;font-weight:bold">TOTAL:</td><td style="font-weight:bold">${fmtMoney(totalValor)}</td><td colspan="2"></td></tr>`;
   } else {
-    const html=buildPDFHTML(titulos[tipo],data);
-    const w=window.open('','_blank');w.document.write(html);w.document.close();w.print();
+    const totalValor = data.reduce((s,n) => s + parseMoney(n.valorTotal), 0);
+    cabecalho = '<tr><th>NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Parc.</th><th>Validação</th><th>Status</th></tr>';
+    rows = data.map(n =>
+      `<tr><td>${n.numero}</td><td>${fmtDate(n.dataFat)}</td><td>${n.fornecedor}</td><td>${fmtMoney(parseMoney(n.valorTotal))}</td><td>${n.conta||'—'}</td><td>${n.numParcelas||1}x</td><td>${n.validacao}</td><td>${calcStatus(n)}</td></tr>`
+    ).join('');
+    totalRow = `<tr><td colspan="3" style="text-align:right;font-weight:bold">TOTAL:</td><td style="font-weight:bold">${fmtMoney(totalValor)}</td><td colspan="4"></td></tr>`;
   }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulo}</title>${css}</head><body>
+    <h1>🏥 Sistema NF — ${titulo}</h1>
+    <p>Gerado em ${new Date().toLocaleString('pt-BR')} &nbsp;|&nbsp; ${data.length} registro(s)</p>
+    <table><thead>${cabecalho}</thead><tbody>${rows}</tbody><tfoot>${totalRow}</tfoot></table>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.print();
 }
 
 function gerarRelatorio(tipo) {
-  const data=getRelatorioData(tipo);
-  const titulos={vencidas:'🔴 Parcelas Vencidas',proximos:'🟡 Próximo Vencimento',periodo:'📅 Por Período de Faturamento',fornecedor:'🏢 Por Fornecedor',vencPeriodo:'📆 Vencimentos por Período',cartorio:'⚖️ Cartório / Protestadas'};
-  const res=document.getElementById('relResultado');
-  if(!data.length){res.innerHTML=`<div class="notice notice-info">Nenhum dado encontrado para este filtro.</div>`;return;}
-  let html=`<div class="table-wrap"><div class="table-toolbar" style="justify-content:space-between"><div style="font-weight:700">${titulos[tipo]} — ${data.length} registros</div>
-  <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('${tipo}')">📥 XLS</button><button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('${tipo}')">📄 PDF</button></div></div>
-  <div style="overflow-x:auto"><table class="tbl"><thead>`;
-  if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
-    html+=`<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr></thead><tbody>`;
-    html+=data.map(({nf,p,idx})=>`<tr><td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta||'—'}</td><td>${statusBadge(p.situacao||'A VENCER')}</td></tr>`).join('');
-  } else {
-    html+=`<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Parcelas</th><th>Validação</th><th>Status</th></tr></thead><tbody>`;
-    html+=data.map(n=>`<tr><td>#${n.numero}</td><td>${fmtDate(n.dataFat)}</td><td>${n.fornecedor}</td><td>${fmtMoney(parseMoney(n.valorTotal))}</td><td>${n.conta||'—'}</td><td>${n.numParcelas||1}x</td><td>${validBadge(n.validacao)}</td><td>${statusBadge(calcStatus(n))}</td></tr>`).join('');
+  const data = getRelatorioData(tipo);
+  const titulos = {
+    vencidas:'🔴 Parcelas Vencidas', proximos:'🟡 Próximo Vencimento',
+    periodo:'📅 Por Período de Faturamento', fornecedor:'🏢 Por Fornecedor',
+    vencPeriodo:'📆 Vencimentos por Período', cartorio:'⚖️ Cartório / Protestadas',
+    baixas:'💰 Baixas (Pagamentos Realizados)'
+  };
+  const res = document.getElementById('relResultado');
+  if (!data.length) {
+    res.innerHTML = `<div class="notice notice-info">Nenhum dado encontrado para este filtro.</div>`;
+    return;
   }
-  html+=`</tbody></table></div></div>`;
-  res.innerHTML=html;
+
+  // Cabeçalho e linhas conforme tipo
+  let thead = '', tbody = '', tfoot = '';
+
+  if (tipo === 'baixas') {
+    const totalPago = data.reduce((s,{p}) => s + parseMoney(p.valorPago||p.valor), 0);
+    thead = `<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Data Pagamento</th><th>Valor Pago</th><th>Conta</th></tr>`;
+    tbody = data.map(({nf,p,idx}) =>
+      `<tr>
+        <td><strong>#${nf.numero}</strong></td>
+        <td>${nf.fornecedor}</td>
+        <td style="text-align:center">${idx}</td>
+        <td>${fmtDate(p.vencimento)}</td>
+        <td style="color:var(--green);font-weight:600">${fmtDate(p.dataPagamento)}</td>
+        <td style="font-family:monospace">${fmtMoney(parseMoney(p.valorPago||p.valor))}</td>
+        <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
+      </tr>`
+    ).join('');
+    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:var(--green)">
+      <td colspan="5" style="text-align:right;color:var(--muted)">TOTAL PAGO:</td>
+      <td style="font-family:monospace">${fmtMoney(totalPago)}</td><td></td>
+    </tr>`;
+  } else if (tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio') {
+    const totalValor = data.reduce((s,{p}) => s + parseMoney(p.valor), 0);
+    thead = `<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>`;
+    tbody = data.map(({nf,p,idx}) =>
+      `<tr>
+        <td><strong>#${nf.numero}</strong></td>
+        <td>${nf.fornecedor}</td>
+        <td style="text-align:center">${idx}</td>
+        <td>${fmtDate(p.vencimento)}</td>
+        <td style="font-family:monospace">${fmtMoney(parseMoney(p.valor))}</td>
+        <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
+        <td>${statusBadge(p.situacao||'A VENCER')}</td>
+      </tr>`
+    ).join('');
+    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:var(--yellow)">
+      <td colspan="4" style="text-align:right;color:var(--muted)">TOTAL:</td>
+      <td style="font-family:monospace">${fmtMoney(totalValor)}</td><td colspan="2"></td>
+    </tr>`;
+  } else {
+    const totalValor = data.reduce((s,n) => s + parseMoney(n.valorTotal), 0);
+    thead = `<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Parcelas</th><th>Validação</th><th>Status</th></tr>`;
+    tbody = data.map(n =>
+      `<tr>
+        <td><strong>#${n.numero}</strong></td>
+        <td>${fmtDate(n.dataFat)}</td>
+        <td>${n.fornecedor}</td>
+        <td style="font-family:monospace">${fmtMoney(parseMoney(n.valorTotal))}</td>
+        <td style="font-size:12px;color:var(--muted)">${n.conta||'—'}</td>
+        <td style="text-align:center">${n.numParcelas||1}x</td>
+        <td>${validBadge(n.validacao)}</td>
+        <td>${statusBadge(calcStatus(n))}</td>
+      </tr>`
+    ).join('');
+    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:var(--accent)">
+      <td colspan="3" style="text-align:right;color:var(--muted)">TOTAL:</td>
+      <td style="font-family:monospace">${fmtMoney(totalValor)}</td><td colspan="4"></td>
+    </tr>`;
+  }
+
+  res.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar" style="justify-content:space-between">
+        <div style="font-weight:700">${titulos[tipo]||tipo} &nbsp;<span style="font-size:12px;color:var(--muted);font-weight:400">${data.length} registro(s)</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('${tipo}')">📥 XLS</button>
+          <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('${tipo}')">📄 PDF</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead>${thead}</thead>
+          <tbody>${tbody}</tbody>
+          <tfoot>${tfoot}</tfoot>
+        </table>
+      </div>
+    </div>`;
 }
+
 
 // ====================================================
 // INIT
