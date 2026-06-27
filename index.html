@@ -731,18 +731,34 @@ input[type=date]{color-scheme:light}
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioPDF('periodo')">📄 PDF</button>
           </div>
         </div>
-        <div class="chart-card" style="cursor:pointer" onclick="gerarRelatorio('fornecedor')">
-          <div style="font-size:32px;margin-bottom:12px">🏢</div>
-          <div style="font-size:16px;font-weight:700;margin-bottom:6px">Relatório por Fornecedor</div>
-          <div style="color:var(--muted);font-size:13px">Resumo completo por fornecedor</div>
-          <div style="margin-top:12px">
-            <select class="filter" id="relFornecedor" style="width:100%" onclick="event.stopPropagation()">
-              <option value="">Todos os fornecedores</option>
-            </select>
+        <div class="chart-card" style="grid-column:span 2;border-top:3px solid var(--accent)">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+            <div style="font-size:32px">🏢</div>
+            <div>
+              <div style="font-size:16px;font-weight:700;margin-bottom:4px">Relatório por Fornecedor</div>
+              <div style="color:var(--muted);font-size:13px">Notas completas ou resumo de vencidos — filtre por fornecedor e tipo de análise</div>
+            </div>
           </div>
-          <div style="margin-top:12px;display:flex;gap:8px">
-            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioXLS('fornecedor')">📥 XLS</button>
-            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioPDF('fornecedor')">📄 PDF</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;margin-bottom:14px">
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fornecedor</label>
+              <select id="relFornecedor" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px" onclick="event.stopPropagation()">
+                <option value="">Todos os fornecedores</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Tipo de relatório</label>
+              <select id="relFornTipo" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px" onclick="event.stopPropagation()">
+                <option value="fornecedor">Todas as notas (completo)</option>
+                <option value="vencidosFornecedor_vencidas">Vencidos — apenas parcelas vencidas</option>
+                <option value="vencidosFornecedor_todos">Vencidos — incluindo cartório e protestadas</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="event.stopPropagation();gerarRelatorioFornecedorAdaptado()">🔍 Gerar Relatório</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioFornecedorAdaptadoXLS()">📥 XLS</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioFornecedorAdaptadoPDF()">📄 PDF</button>
           </div>
         </div>
 
@@ -800,35 +816,6 @@ input[type=date]{color-scheme:light}
           <div style="margin-top:12px;display:flex;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('vencPeriodo')">📥 XLS</button>
             <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('vencPeriodo')">📄 PDF</button>
-          </div>
-        </div>
-        <div class="chart-card" style="grid-column:span 2;border-top:3px solid #dc2626;cursor:pointer" onclick="gerarRelatorio('vencidosFornecedor')">
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-            <div style="font-size:32px">🏢🔴</div>
-            <div style="flex:1">
-              <div style="font-size:16px;font-weight:700;margin-bottom:4px">Vencidos por Fornecedor</div>
-              <div style="color:var(--muted);font-size:13px">Total de parcelas vencidas agrupado por fornecedor — ideal para cobrança</div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;margin-bottom:14px">
-            <div>
-              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fornecedor</label>
-              <select id="relVencFornecedor" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px" onclick="event.stopPropagation()">
-                <option value="">Todos os fornecedores</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Incluir status</label>
-              <select id="relVencFornStatus" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px" onclick="event.stopPropagation()">
-                <option value="vencidas">Apenas vencidas</option>
-                <option value="todos">Vencidas + Cartório + Protestadas</option>
-              </select>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-danger" onclick="event.stopPropagation();gerarRelatorio('vencidosFornecedor')">🔍 Gerar Relatório</button>
-            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioXLS('vencidosFornecedor')">📥 XLS</button>
-            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioPDF('vencidosFornecedor')">📄 PDF</button>
           </div>
         </div>
 
@@ -1643,7 +1630,7 @@ function populateSelects() {
   });
 }
 function populateRelFornSelect() {
-  const ids = ['relFornecedor', 'relBaixaFornecedor', 'relVencFornecedor'];
+  const ids = ['relFornecedor', 'relBaixaFornecedor'];
   ids.forEach(selId => {
     const el = document.getElementById(selId);
     if (!el) return;
@@ -2783,6 +2770,39 @@ function buildPDFHTML(titulo,data) {
 }
 
 // RELATÓRIOS
+function _getTipoFornecedor() {
+  // Lê o select do card unificado e retorna o tipo e filtros corretos
+  const sel = document.getElementById('relFornTipo')?.value || 'fornecedor';
+  // Sincroniza o select de fornecedor antigo (relFornecedor) — já existe
+  return sel; // 'fornecedor' | 'vencidosFornecedor_vencidas' | 'vencidosFornecedor_todos'
+}
+
+function gerarRelatorioFornecedorAdaptado() {
+  const sel = _getTipoFornecedor();
+  if (sel === 'fornecedor') {
+    gerarRelatorio('fornecedor');
+  } else {
+    // Injeta temporariamente o modo no getRelatorioData via globals
+    window._relVencFornModo = sel === 'vencidosFornecedor_todos' ? 'todos' : 'vencidas';
+    gerarRelatorio('vencidosFornecedor');
+    window._relVencFornModo = null;
+  }
+}
+function gerarRelatorioFornecedorAdaptadoXLS() {
+  const sel = _getTipoFornecedor();
+  if (sel === 'fornecedor') { gerarRelatorioXLS('fornecedor'); return; }
+  window._relVencFornModo = sel === 'vencidosFornecedor_todos' ? 'todos' : 'vencidas';
+  gerarRelatorioXLS('vencidosFornecedor');
+  window._relVencFornModo = null;
+}
+function gerarRelatorioFornecedorAdaptadoPDF() {
+  const sel = _getTipoFornecedor();
+  if (sel === 'fornecedor') { gerarRelatorioPDF('fornecedor'); return; }
+  window._relVencFornModo = sel === 'vencidosFornecedor_todos' ? 'todos' : 'vencidas';
+  gerarRelatorioPDF('vencidosFornecedor');
+  window._relVencFornModo = null;
+}
+
 function getRelatorioData(tipo) {
   const now=new Date();now.setHours(0,0,0,0);
   const em15=new Date(now);em15.setDate(em15.getDate()+15);
@@ -2790,9 +2810,13 @@ function getRelatorioData(tipo) {
     const rows=[];
     notas.forEach(nf=>(nf.parcelas||[]).forEach((p,i)=>{
       const v=new Date(p.vencimento);v.setHours(0,0,0,0);
-      if(v<now&&p.situacao!=='PAGO') rows.push({nf,p,idx:i+1});
+      const sit=String(p.situacao||'').toUpperCase();
+      if(v<now && sit!=='PAGO'){
+        const diasVencido=Math.floor((now-v)/(1000*60*60*24));
+        rows.push({nf,p,idx:i+1,diasVencido});
+      }
     }));
-    return rows.sort((a,b)=>new Date(a.p.vencimento)-new Date(b.p.vencimento));
+    return rows.sort((a,b)=>b.diasVencido-a.diasVencido); // mais atrasados primeiro
   }
   if(tipo==='proximos'){
     const rows=[];
@@ -2845,8 +2869,9 @@ function getRelatorioData(tipo) {
     return notas.filter(n=>!fn||n.fornecedor===fn);
   }
   if(tipo==='vencidosFornecedor'){
-    const fn     = document.getElementById('relVencFornecedor')?.value||'';
-    const modo   = document.getElementById('relVencFornStatus')?.value||'vencidas';
+    // Filtro de fornecedor vem do select unificado
+    const fn   = document.getElementById('relFornecedor')?.value||'';
+    const modo = window._relVencFornModo || 'vencidas';
     const now    = new Date(); now.setHours(0,0,0,0);
     // Coleta parcelas vencidas/cartório agrupadas por fornecedor
     const mapa   = {}; // { fornecedor: { parcelas:[], totalVencido, qtd, nfs:Set } }
@@ -2926,9 +2951,28 @@ function gerarRelatorioXLS(tipo) {
     const totalPago=rows.reduce((s,r)=>s+r.Valor_Pago,0);
     rows.push({Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Data_Pagamento:'',Valor_Original:'',Valor_Pago:totalPago,Conta:''});
   } else if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
-    rows=data.map(({nf,p,idx})=>({Nº_NF:nf.numero,Fornecedor:nf.fornecedor,CNPJ:nf.cnpj,Parcela:idx,Vencimento:fmtDate(p.vencimento),Valor:parseMoney(p.valor),Situacao:p.situacao,Conta:nf.conta}));
-    const total=rows.reduce((s,r)=>s+r.Valor,0);
-    rows.push({Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Valor:total,Situacao:'',Conta:''});
+    if(tipo==='vencidas'){
+      rows=data.map(({nf,p,idx,diasVencido})=>({
+        Nº_NF:          nf.numero,
+        Data_Faturamento:fmtDate(nf.dataFat),
+        Fornecedor:     nf.fornecedor,
+        CNPJ:           nf.cnpj,
+        Conta:          nf.conta,
+        Parcela:        `${idx}/${nf.numParcelas||1}`,
+        Vencimento:     fmtDate(p.vencimento),
+        Dias_Vencido:   diasVencido||0,
+        Valor_Vencido:  parseMoney(p.valor),
+        Status:         p.situacao||'VENCIDA',
+      }));
+    } else {
+      rows=data.map(({nf,p,idx})=>({Nº_NF:nf.numero,Fornecedor:nf.fornecedor,CNPJ:nf.cnpj,Parcela:idx,Vencimento:fmtDate(p.vencimento),Valor:parseMoney(p.valor),Situacao:p.situacao,Conta:nf.conta}));
+    }
+    const campoValor = tipo==='vencidas'?'Valor_Vencido':'Valor';
+    const total=rows.reduce((s,r)=>s+(r[campoValor]||0),0);
+    const totalRow = tipo==='vencidas'
+      ? {Nº_NF:'TOTAL',Data_Faturamento:'',Fornecedor:'',CNPJ:'',Conta:'',Parcela:'',Vencimento:'',Dias_Vencido:'',Valor_Vencido:total,Status:''}
+      : {Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Valor:total,Situacao:'',Conta:''};
+    rows.push(totalRow);
   } else {
     rows=data.map(n=>({Nº_NF:n.numero,Data_Fat:fmtDate(n.dataFat),Fornecedor:n.fornecedor,Valor_Total:parseMoney(n.valorTotal),Conta:n.conta,Status:calcStatus(n),Validacao:n.validacao}));
     const total=rows.reduce((s,r)=>s+r.Valor_Total,0);
@@ -2969,11 +3013,30 @@ function gerarRelatorioPDF(tipo) {
     totalRow = `<tr><td colspan="5" style="text-align:right;font-weight:bold">TOTAL PAGO:</td><td style="font-weight:bold">${fmtMoney(totalPago)}</td><td></td></tr>`;
   } else if (tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio') {
     const totalValor = data.reduce((s,{p}) => s + parseMoney(p.valor), 0);
-    cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>';
-    rows = data.map(({nf,p,idx}) =>
-      `<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta||'—'}</td><td>${p.situacao||'—'}</td></tr>`
-    ).join('');
-    totalRow = `<tr><td colspan="4" style="text-align:right;font-weight:bold">TOTAL:</td><td style="font-weight:bold">${fmtMoney(totalValor)}</td><td colspan="2"></td></tr>`;
+    if (tipo==='vencidas') {
+      cabecalho = '<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>CNPJ</th><th>Conta</th><th style="text-align:center">Parcela</th><th>Vencimento</th><th style="text-align:center">Atraso</th><th style="text-align:right">Valor Vencido</th><th>Status</th></tr>';
+      rows = data.map(({nf,p,idx,diasVencido}) =>
+        `<tr>
+          <td><strong>${nf.numero}</strong></td>
+          <td>${fmtDate(nf.dataFat)}</td>
+          <td>${nf.fornecedor}</td>
+          <td style="font-size:9px">${nf.cnpj||'—'}</td>
+          <td>${nf.conta||'—'}</td>
+          <td style="text-align:center">${idx}/${nf.numParcelas||1}</td>
+          <td style="color:#b91c1c">${fmtDate(p.vencimento)}</td>
+          <td style="text-align:center;color:#b91c1c;font-weight:bold">+${diasVencido||0}d</td>
+          <td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(parseMoney(p.valor))}</td>
+          <td>${p.situacao||'VENCIDA'}</td>
+        </tr>`
+      ).join('');
+      totalRow = `<tr><td colspan="8" style="text-align:right;font-weight:bold">TOTAL VENCIDO:</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(totalValor)}</td><td></td></tr>`;
+    } else {
+      cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>';
+      rows = data.map(({nf,p,idx}) =>
+        `<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta||'—'}</td><td>${p.situacao||'—'}</td></tr>`
+      ).join('');
+      totalRow = `<tr><td colspan="4" style="text-align:right;font-weight:bold">TOTAL:</td><td style="font-weight:bold">${fmtMoney(totalValor)}</td><td colspan="2"></td></tr>`;
+    }
   } else {
     const totalValor = data.reduce((s,n) => s + parseMoney(n.valorTotal), 0);
     cabecalho = '<tr><th>NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Parc.</th><th>Validação</th><th>Status</th></tr>';
@@ -3001,7 +3064,7 @@ function gerarRelatorio(tipo) {
     vencidas:'🔴 Parcelas Vencidas', proximos:'🟡 Próximo Vencimento',
     periodo:'📅 Por Período de Faturamento', fornecedor:'🏢 Por Fornecedor',
     vencPeriodo:'📆 Vencimentos por Período', cartorio:'⚖️ Cartório / Protestadas',
-    baixas:'💰 Baixas (Pagamentos Realizados)', vencidosFornecedor:'🏢🔴 Vencidos por Fornecedor'
+    baixas:'💰 Baixas (Pagamentos Realizados)', vencidosFornecedor:'🏢 Vencidos por Fornecedor'
   };
   const res = document.getElementById('relResultado');
   if (!data.length) {
@@ -3089,21 +3152,37 @@ function gerarRelatorio(tipo) {
     </tr>`;
   } else if (tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio') {
     const totalValor = data.reduce((s,{p}) => s + parseMoney(p.valor), 0);
-    thead = `<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>`;
-    tbody = data.map(({nf,p,idx}) =>
-      `<tr>
-        <td><strong>#${nf.numero}</strong></td>
-        <td>${nf.fornecedor}</td>
-        <td style="text-align:center">${idx}</td>
-        <td>${fmtDate(p.vencimento)}</td>
-        <td style="font-family:monospace">${fmtMoney(parseMoney(p.valor))}</td>
-        <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
-        <td>${statusBadge(p.situacao||'A VENCER')}</td>
-      </tr>`
+    const isVencidas = tipo==='vencidas';
+    thead = isVencidas
+      ? `<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>CNPJ</th><th style="text-align:center">Parcela</th><th>Vencimento</th><th style="text-align:right">Valor</th><th>Conta</th><th>Status</th><th style="text-align:center">Dias Atraso</th></tr>`
+      : `<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>`;
+    tbody = data.map(({nf,p,idx,diasVencido}) => isVencidas
+      ? `<tr>
+          <td><strong style="color:var(--accent)">#${nf.numero}</strong></td>
+          <td style="font-size:12px;color:var(--muted)">${fmtDate(nf.dataFat)}</td>
+          <td>${nf.fornecedor}</td>
+          <td style="font-size:11px;color:var(--muted);font-family:monospace">${nf.cnpj||'—'}</td>
+          <td style="text-align:center;font-weight:600">${idx}/${nf.numParcelas||1}</td>
+          <td style="color:#b91c1c;font-weight:600">${fmtDate(p.vencimento)}</td>
+          <td style="text-align:right;font-family:monospace;font-weight:700;color:#991b1b">${fmtMoney(parseMoney(p.valor))}</td>
+          <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
+          <td>${statusBadge(p.situacao||'VENCIDA')}</td>
+          <td style="text-align:center"><span style="background:#fee2e2;color:#991b1b;font-weight:700;font-family:monospace;padding:3px 8px;border-radius:20px;font-size:11px">+${diasVencido||0}d</span></td>
+        </tr>`
+      : `<tr>
+          <td><strong>#${nf.numero}</strong></td>
+          <td>${nf.fornecedor}</td>
+          <td style="text-align:center">${idx}</td>
+          <td>${fmtDate(p.vencimento)}</td>
+          <td style="font-family:monospace">${fmtMoney(parseMoney(p.valor))}</td>
+          <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
+          <td>${statusBadge(p.situacao||'A VENCER')}</td>
+        </tr>`
     ).join('');
-    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:var(--yellow)">
-      <td colspan="4" style="text-align:right;color:var(--muted)">TOTAL:</td>
-      <td style="font-family:monospace">${fmtMoney(totalValor)}</td><td colspan="2"></td>
+    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:#b91c1c">
+      <td colspan="${isVencidas?6:4}" style="text-align:right;color:var(--muted)">TOTAL ${isVencidas?'VENCIDO':''}:</td>
+      <td style="font-family:monospace;text-align:${isVencidas?'right':'left'}">${fmtMoney(totalValor)}</td>
+      <td colspan="${isVencidas?3:2}"></td>
     </tr>`;
   } else {
     const totalValor = data.reduce((s,n) => s + parseMoney(n.valorTotal), 0);
