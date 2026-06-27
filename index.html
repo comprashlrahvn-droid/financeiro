@@ -257,21 +257,21 @@ a{color:var(--accent);text-decoration:none}
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f7faf8;border-bottom:1px solid var(--border);white-space:nowrap}
 .tbl td{padding:10px 14px;border-bottom:1px solid #eef3f0;font-size:13px;vertical-align:middle;color:var(--text)}
-.tbl td strong{color:#fff}
+.tbl td strong{color:var(--text)}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tr:hover td{background:#f0f9f4}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;border:1px solid transparent}
-.badge-pago{background:#10b98135;color:#6ee7b7;border-color:#10b98155}
-.badge-vencida{background:#ef444435;color:#fecaca;border-color:#ef444455}
-.badge-avencer{background:#3b82f635;color:#bfdbfe;border-color:#3b82f655}
-.badge-proximo{background:#f59e0b35;color:#fde68a;border-color:#f59e0b55}
-.badge-pendente{background:#6366f135;color:#ddd6fe;border-color:#6366f155}
-.badge-validado{background:#10b98135;color:#6ee7b7;border-color:#10b98155}
-.badge-aguardando{background:#f59e0b35;color:#fde68a;border-color:#f59e0b55}
-.badge-recusado{background:#ef444435;color:#fecaca;border-color:#ef444455}
-.badge-transito{background:#7c3aed35;color:#ddd6fe;border-color:#7c3aed55}
-.badge-cartorio{background:#9a3412 55;color:#fed7aa;border-color:#ea580c55;background:#ea580c35}
-.badge-protestada{background:#7f1d1d55;color:#fca5a5;border-color:#dc262655;font-weight:900}
+.badge-pago{background:#d1fae5;color:#065f46;border-color:#a7f3d0}
+.badge-vencida{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.badge-avencer{background:#dbeafe;color:#1e40af;border-color:#bfdbfe}
+.badge-proximo{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.badge-pendente{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.badge-validado{background:#d1fae5;color:#065f46;border-color:#a7f3d0}
+.badge-aguardando{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.badge-recusado{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.badge-transito{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.badge-cartorio{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.badge-protestada{background:#fee2e2;color:#7f1d1d;border-color:#fca5a5;font-weight:900}
 .tbl-actions{display:flex;gap:6px;flex-wrap:wrap}
 .pagination{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
 .page-btns{display:flex;gap:4px}
@@ -802,6 +802,36 @@ input[type=date]{color-scheme:light}
             <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('vencPeriodo')">📄 PDF</button>
           </div>
         </div>
+        <div class="chart-card" style="grid-column:span 2;border-top:3px solid #dc2626;cursor:pointer" onclick="gerarRelatorio('vencidosFornecedor')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+            <div style="font-size:32px">🏢🔴</div>
+            <div style="flex:1">
+              <div style="font-size:16px;font-weight:700;margin-bottom:4px">Vencidos por Fornecedor</div>
+              <div style="color:var(--muted);font-size:13px">Total de parcelas vencidas agrupado por fornecedor — ideal para cobrança</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;margin-bottom:14px">
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fornecedor</label>
+              <select id="relVencFornecedor" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px" onclick="event.stopPropagation()">
+                <option value="">Todos os fornecedores</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Incluir status</label>
+              <select id="relVencFornStatus" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px" onclick="event.stopPropagation()">
+                <option value="vencidas">Apenas vencidas</option>
+                <option value="todos">Vencidas + Cartório + Protestadas</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-danger" onclick="event.stopPropagation();gerarRelatorio('vencidosFornecedor')">🔍 Gerar Relatório</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioXLS('vencidosFornecedor')">📥 XLS</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioPDF('vencidosFornecedor')">📄 PDF</button>
+          </div>
+        </div>
+
         <!-- BAIXAS por Data de Pagamento / Fornecedor -->
         <div class="chart-card" style="grid-column:span 2;border-top:3px solid var(--green)">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
@@ -1613,7 +1643,7 @@ function populateSelects() {
   });
 }
 function populateRelFornSelect() {
-  const ids = ['relFornecedor', 'relBaixaFornecedor'];
+  const ids = ['relFornecedor', 'relBaixaFornecedor', 'relVencFornecedor'];
   ids.forEach(selId => {
     const el = document.getElementById(selId);
     if (!el) return;
@@ -2814,6 +2844,37 @@ function getRelatorioData(tipo) {
     const fn=document.getElementById('relFornecedor').value;
     return notas.filter(n=>!fn||n.fornecedor===fn);
   }
+  if(tipo==='vencidosFornecedor'){
+    const fn     = document.getElementById('relVencFornecedor')?.value||'';
+    const modo   = document.getElementById('relVencFornStatus')?.value||'vencidas';
+    const now    = new Date(); now.setHours(0,0,0,0);
+    // Coleta parcelas vencidas/cartório agrupadas por fornecedor
+    const mapa   = {}; // { fornecedor: { parcelas:[], totalVencido, qtd, nfs:Set } }
+    notas.forEach(nf=>{
+      if(fn && nf.fornecedor!==fn) return;
+      (nf.parcelas||[]).forEach((p,i)=>{
+        const sit = String(p.situacao||'').toUpperCase().trim();
+        if(sit==='PAGO') return;
+        const venc = p.vencimento ? new Date(p.vencimento) : null;
+        if(!venc) return;
+        venc.setHours(0,0,0,0);
+        const isVencida   = venc < now;
+        const isCartorio  = ['EM CARTÓRIO','TRÂNSITO DE CARTÓRIO','PROTESTADA'].includes(sit);
+        const incluir = modo==='todos' ? (isVencida||isCartorio) : isVencida;
+        if(!incluir) return;
+        const f = nf.fornecedor||'—';
+        if(!mapa[f]) mapa[f]={parcelas:[],totalVencido:0,qtdParcelas:0,nfs:new Set()};
+        mapa[f].parcelas.push({nf,p,idx:i+1});
+        mapa[f].totalVencido += parseMoney(p.valor);
+        mapa[f].qtdParcelas++;
+        mapa[f].nfs.add(nf.numero);
+      });
+    });
+    // Retorna array ordenado por valor vencido desc
+    return Object.entries(mapa)
+      .sort((a,b)=>b[1].totalVencido-a[1].totalVencido)
+      .map(([fornecedor,v])=>({fornecedor, ...v, qtdNFs:v.nfs.size}));
+  }
   if(tipo==='baixas'){
     const fn  = document.getElementById('relBaixaFornecedor')?.value||'';
     const de  = document.getElementById('relBaixaDe')?.value||'';
@@ -2838,10 +2899,19 @@ function getRelatorioData(tipo) {
 
 function gerarRelatorioXLS(tipo) {
   const data=getRelatorioData(tipo);
-  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas',baixas:'Baixas (Pagamentos Realizados)'};
+  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas',baixas:'Baixas (Pagamentos Realizados)',vencidosFornecedor:'Vencidos por Fornecedor'};
   if(!data.length){alert('Nenhum dado para exportar.');return;}
   let rows;
-  if(tipo==='baixas'){
+  if(tipo==='vencidosFornecedor'){
+    rows = data.map(d=>({
+      Fornecedor:       d.fornecedor,
+      Nº_NFs:           d.qtdNFs,
+      Parcelas_Vencidas:d.qtdParcelas,
+      Total_Vencido:    d.totalVencido,
+    }));
+    const totalGeral = rows.reduce((s,r)=>s+r.Total_Vencido,0);
+    rows.push({Fornecedor:'TOTAL',Nº_NFs:'',Parcelas_Vencidas:'',Total_Vencido:totalGeral});
+  } else if(tipo==='baixas'){
     rows=data.map(({nf,p,idx})=>({
       Nº_NF:      nf.numero,
       Fornecedor: nf.fornecedor,
@@ -2877,103 +2947,20 @@ function gerarRelatorioPDF(tipo) {
     vencidas:'Parcelas Vencidas', proximos:'Próximo Vencimento (15 dias)',
     periodo:'Por Período de Faturamento', fornecedor:'Por Fornecedor',
     vencPeriodo:'Vencimentos por Período', cartorio:'Cartório / Protestadas',
-    baixas:'Baixas (Pagamentos Realizados)'
+    baixas:'Baixas (Pagamentos Realizados)', vencidosFornecedor:'Vencidos por Fornecedor'
   };
-  const css = `<style>body{font-family:Arial;font-size:11px;color:#000}h1{font-size:14px;margin-bottom:4px}p{font-size:10px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#e8e8e8;font-weight:bold}tr:nth-child(even){background:#f9f9f9}tfoot tr{background:#e0ffe0;font-weight:bold}@media print{body{margin:0}}
-/* ── TEMA CLARO AHVN — refinamentos ── */
-.kpi{transition:box-shadow .2s,transform .2s}
-.kpi:hover{box-shadow:var(--shadow-md,0 4px 12px rgba(0,0,0,.1));transform:translateY(-1px)}
-.chart-card{transition:box-shadow .2s}
-.topbar .nav-btn span{font-size:13px}
-.login-title{color:var(--accent)!important}
-.login-subtitle{color:#6b7280!important}
-.lf-group input:focus,.lf-group select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(30,102,71,.1)!important;outline:none}
-.btn-primary{background:var(--accent-grad);color:#fff;box-shadow:0 2px 8px rgba(30,102,71,.25)}
-.btn-primary:hover{opacity:.9;box-shadow:0 4px 12px rgba(30,102,71,.35)}
-.btn-success{background:var(--green);color:#fff}
-.btn-danger{background:var(--red);color:#fff}
-.badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.02em}
-.tbl thead th:first-child{border-radius:8px 0 0 0}
-.tbl thead th:last-child{border-radius:0 8px 0 0}
-.modal-overlay{background:rgba(0,0,0,0.35)!important;backdrop-filter:blur(4px)}
-.alert-section{margin-bottom:16px;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-.page-header h2{border-left:4px solid var(--accent);padding-left:12px}
-.right{text-align:right}
-
-/* ═══ SIDEBAR REFINAMENTOS ══════════════════════════════════════════ */
-.sidebar-nav::-webkit-scrollbar{width:4px}
-.sidebar-nav::-webkit-scrollbar-track{background:transparent}
-.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
-.main::-webkit-scrollbar{width:6px}
-.main::-webkit-scrollbar-track{background:var(--bg)}
-.main::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.page{padding:28px 32px!important}
-
-/* ═══ KPI CARDS REDESIGN ════════════════════════════════════════════ */
-.kpi{border-radius:14px!important;padding:20px 22px!important;transition:all .2s!important}
-.kpi:hover{transform:translateY(-2px)!important;box-shadow:0 8px 24px rgba(0,0,0,.1)!important}
-.kpi-value{font-size:24px!important;font-weight:800!important;letter-spacing:-.5px!important}
-.kpi::before{height:4px!important;border-radius:14px 14px 0 0!important}
-
-/* ═══ TABELAS ════════════════════════════════════════════════════════ */
-.table-wrap{border-radius:14px!important}
-.tbl th:first-child{border-radius:0}
-.tbl{border-spacing:0}
-
-/* ═══ BOTÕES ══════════════════════════════════════════════════════ */
-.btn{border-radius:10px!important;font-weight:600!important}
-.btn-sm{padding:6px 12px!important;font-size:12px!important;border-radius:8px!important}
-
-/* ═══ MODAIS ═════════════════════════════════════════════════════════ */
-.modal{border-radius:20px!important;max-width:920px!important}
-.modal-header{border-radius:20px 20px 0 0!important}
-
-/* ═══ MOBILE RESPONSIVO ══════════════════════════════════════════════ */
-@media(max-width:900px){
-  .sidebar{width:64px!important;min-width:64px!important}
-  .sidebar-brand-text,.nav-btn span:not(.nav-badge),.nav-group-label,
-  .sidebar-user-info,.sidebar-sync{display:none!important}
-  .sidebar-brand{justify-content:center;padding:20px 12px!important}
-  .nav-btn{justify-content:center!important;padding:12px!important}
-  .nav-btn .nav-icon{width:auto!important;font-size:18px!important}
-  .nav-btn.active::before{left:auto;right:0;top:0;bottom:0;height:auto;width:3px;transform:none}
-  /* .main-wrapper já definido acima */
-  .page{padding:16px!important}
-}
-
-/* ═══ LOADING SKELETON ═══════════════════════════════════════════════ */
-.skeleton{background:linear-gradient(90deg,#f0f4f2 25%,#e8f0ec 50%,#f0f4f2 75%);
-  background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* ═══ CHART CARDS ════════════════════════════════════════════════════ */
-.chart-card{border-radius:14px!important;padding:22px 24px!important}
-.chart-title{font-size:13px!important;font-weight:700!important;color:var(--text)!important;
-  display:flex;align-items:center;gap:8px;margin-bottom:18px!important}
-.chart-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;display:inline-block}
-
-/* ═══ NOTICE ════════════════════════════════════════════════════════ */
-.notice{border-radius:10px!important;padding:14px 18px!important}
-.notice-info{border-left:4px solid var(--accent)!important;background:var(--accent-pale)!important}
-.notice-warn{border-left:4px solid var(--yellow)!important;background:var(--yellow-pale)!important}
-.notice-error{border-left:4px solid var(--red)!important;background:var(--red-pale)!important}
-
-/* ═══ APROVAÇÃO CARDS ════════════════════════════════════════════════ */
-.chart-card[style*="border-left"]{transition:all .2s}
-.chart-card[style*="border-left"]:hover{transform:translateX(2px);box-shadow:var(--shadow-md)}
-
-/* ═══ PAGE HEADER ════════════════════════════════════════════════════ */
-.page-header h2{font-size:20px!important;font-weight:800!important;
-  color:var(--text)!important;border-left:none!important;padding-left:0!important}
-
-/* ═══ PERFORMANCE: will-change para animações ════════════════════════ */
-.kpi,.chart-card,.sidebar,.modal{will-change:transform}
-.page{will-change:opacity}
-</style>`;
+  const css = `<style>body{font-family:Arial;font-size:11px;color:#000}h1{font-size:14px;margin-bottom:4px}p{font-size:10px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#e8e8e8;font-weight:bold}tr:nth-child(even){background:#f9f9f9}tfoot tr{background:#e0f2e9;font-weight:bold}@media print{body{margin:0}}</style>`;
   const titulo = titulos[tipo] || tipo;
   let cabecalho = '', rows = '', totalRow = '';
 
-  if (tipo === 'baixas') {
+  if (tipo === 'vencidosFornecedor') {
+    const totalGeral = data.reduce((s,d)=>s+d.totalVencido, 0);
+    cabecalho = '<tr><th>#</th><th>Fornecedor</th><th style="text-align:center">NFs</th><th style="text-align:center">Parcelas</th><th style="text-align:right">Total Vencido</th></tr>';
+    rows = data.map((d,i)=>
+      `<tr><td style="text-align:center;color:#999">${i+1}</td><td><strong>${d.fornecedor}</strong></td><td style="text-align:center">${d.qtdNFs}</td><td style="text-align:center">${d.qtdParcelas}</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(d.totalVencido)}</td></tr>`
+    ).join('');
+    totalRow = `<tr><td colspan="4" style="text-align:right;font-weight:bold">TOTAL VENCIDO:</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(totalGeral)}</td></tr>`;
+  } else if (tipo === 'baixas') {
     const totalPago = data.reduce((s,{p}) => s + parseMoney(p.valorPago||p.valor), 0);
     cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Data Pag.</th><th>Valor Pago</th><th>Conta</th></tr>';
     rows = data.map(({nf,p,idx}) =>
@@ -3007,17 +2994,75 @@ function gerarRelatorioPDF(tipo) {
   w.print();
 }
 
+
 function gerarRelatorio(tipo) {
   const data = getRelatorioData(tipo);
   const titulos = {
     vencidas:'🔴 Parcelas Vencidas', proximos:'🟡 Próximo Vencimento',
     periodo:'📅 Por Período de Faturamento', fornecedor:'🏢 Por Fornecedor',
     vencPeriodo:'📆 Vencimentos por Período', cartorio:'⚖️ Cartório / Protestadas',
-    baixas:'💰 Baixas (Pagamentos Realizados)'
+    baixas:'💰 Baixas (Pagamentos Realizados)', vencidosFornecedor:'🏢🔴 Vencidos por Fornecedor'
   };
   const res = document.getElementById('relResultado');
   if (!data.length) {
     res.innerHTML = `<div class="notice notice-info">Nenhum dado encontrado para este filtro.</div>`;
+    return;
+  }
+
+  // ── Caso especial: relatório agrupado por fornecedor ─────────────────────
+  if (tipo === 'vencidosFornecedor') {
+    const totalGeral = data.reduce((s,d)=>s+d.totalVencido, 0);
+    const thead = `<tr>
+      <th style="width:36px;text-align:center">#</th>
+      <th>Fornecedor</th>
+      <th style="text-align:center">NFs</th>
+      <th style="text-align:center">Parcelas</th>
+      <th style="text-align:right">Total Vencido</th>
+      <th>Proporção</th>
+    </tr>`;
+    const maxVal = data[0]?.totalVencido || 1;
+    const tbody = data.map((d,i)=>{
+      const pct = Math.round((d.totalVencido/maxVal)*100);
+      const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-family:monospace">#${i+1}</span>`;
+      return `<tr>
+        <td style="text-align:center">${rank}</td>
+        <td>
+          <strong>${d.fornecedor}</strong>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.qtdNFs} NF(s) · ${d.qtdParcelas} parcela(s) vencida(s)</div>
+        </td>
+        <td style="text-align:center;font-weight:600">${d.qtdNFs}</td>
+        <td style="text-align:center;font-weight:600">${d.qtdParcelas}</td>
+        <td style="text-align:right;font-weight:800;color:#991b1b;font-family:monospace;font-size:14px">${fmtMoney(d.totalVencido)}</td>
+        <td style="min-width:140px;padding-right:8px">
+          <div style="background:#fee2e2;border-radius:6px;height:10px;width:100%;overflow:hidden">
+            <div style="background:linear-gradient(90deg,#b91c1c,#ef4444);height:10px;width:${pct}%;border-radius:6px;transition:width .6s ease"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px">${pct}%</div>
+        </td>
+      </tr>`;
+    }).join('');
+    const tfoot = `<tr style="background:#fff5f5;font-weight:800;color:#991b1b">
+      <td colspan="4" style="text-align:right;color:var(--muted)">TOTAL VENCIDO:</td>
+      <td style="text-align:right;font-family:monospace;font-size:15px">${fmtMoney(totalGeral)}</td>
+      <td></td>
+    </tr>`;
+    res.innerHTML = `
+      <div class="table-wrap">
+        <div class="table-toolbar" style="justify-content:space-between">
+          <div style="font-weight:700">${titulos[tipo]} &nbsp;<span style="font-size:12px;color:var(--muted);font-weight:400">${data.length} fornecedor(es)</span></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('vencidosFornecedor')">📥 XLS</button>
+            <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('vencidosFornecedor')">📄 PDF</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead>${thead}</thead>
+            <tbody>${tbody}</tbody>
+            <tfoot>${tfoot}</tfoot>
+          </table>
+        </div>
+      </div>`;
     return;
   }
 
