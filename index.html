@@ -322,7 +322,7 @@ a{color:var(--accent);text-decoration:none}
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
 .stat-row:last-child{border:none}
 .notice{padding:14px 18px;border-radius:10px;font-size:13px;margin-bottom:16px;border-left:4px solid;display:flex;align-items:flex-start;gap:8px}
-.notice-info{background:#2f7d5e22;border:1px solid #2f7d5e55;color:#a7e8cc}
+.notice-info{background:#e8f5ee;border:1px solid #a7d7bc;color:#1a4d35}
 .notice-warn{background:#f59e0b20;border:1px solid #f59e0b40;color:#fcd34d}
 .notice-success{background:#10b98120;border:1px solid #10b98140;color:#6ee7b7}
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
@@ -2353,6 +2353,33 @@ function _renderAprovacaoLista(lista) {
   }).join('');
 }
 
+
+
+async function aprovarNF(nfId) {
+  const nf = notas.find(x=>x.id===nfId);
+  if (!nf) return;
+  const res = await apiCall('aprovarNota', { numero: nf.numero, ano: nf.ano });
+  if (!res.ok) { alert('Erro: '+(res.erro||'')); return; }
+  // Atualização otimista local
+  nf.validacao = 'VALIDADO';
+  filterAprovacao();
+  renderNotas();
+  reloadNotas().then(()=>{ filterAprovacao(); renderNotas(); });
+}
+
+async function recusarNF(nfId) {
+  const nf = notas.find(x=>x.id===nfId);
+  if (!nf) return;
+  const motivo = prompt('Motivo da recusa (obrigatório):');
+  if (!motivo || !motivo.trim()) return;
+  const res = await apiCall('recusarNota', { numero: nf.numero, ano: nf.ano, motivo: motivo.trim() });
+  if (!res.ok) { alert('Erro: '+(res.erro||'')); return; }
+  // Atualização otimista local — NF sai da fila imediatamente
+  nf.validacao = 'RECUSADO: ' + motivo.trim();
+  filterAprovacao(); // com o filtro padrão (AGUARDANDO), a nota some
+  renderNotas();
+  reloadNotas().then(()=>{ filterAprovacao(); renderNotas(); });
+}
 
 // ====================================================
 // FORNECEDORES
