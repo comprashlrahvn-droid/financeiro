@@ -942,6 +942,32 @@ input[type=date]{color-scheme:light}
 
       <div id="tabManual" class="tab-content active">
         <div class="section-title">Dados da Nota Fiscal</div>
+
+        <!-- Tipo da NF -->
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button type="button" class="btn-tipo-nf active" id="btnTipoNormal" onclick="setTipoNF('NORMAL',this)">
+            📄 Nota Normal
+          </button>
+          <button type="button" class="btn-tipo-nf" id="btnTipoDevolucao" onclick="setTipoNF('DEVOLUCAO',this)">
+            🔄 Nota de Devolução
+          </button>
+        </div>
+
+        <!-- Campo NF de Origem (só aparece em devolução) -->
+        <div id="grpNfOrigem" style="display:none;margin-bottom:14px">
+          <div class="notice notice-warn">
+            🔄 <strong>Nota de Devolução</strong> — Vincule esta nota a uma NF de compra já lançada no sistema.
+            O valor deve ser <strong>negativo</strong> (gerado automaticamente) para compensar a nota original.
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label>🔗 Vincular à NF Original *</label>
+            <select id="nfOrigem" onchange="preencherDadosNFOrigem()">
+              <option value="">— Selecione a NF de origem —</option>
+            </select>
+          </div>
+          <div id="nfOrigemInfo" style="background:#f7faf8;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;display:none;margin-top:6px"></div>
+        </div>
+
         <div class="form-grid">
           <div class="form-group"><label>Nº NF *</label><input type="text" id="nfNumero" placeholder="Ex: 12345"></div>
           <div class="form-group"><label>Data Faturamento *</label><input type="date" id="nfDataFat"></div>
@@ -1176,12 +1202,18 @@ async function apiCall(acao, params) {
   params.acao = acao;
   if (authToken) params.token = authToken;
 
+  // Timeout de 30s — GAS pode ser lento mas não deve travar para sempre
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), 30000);
+
   try {
     const resp = await fetch(GAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
-      body: JSON.stringify(params)
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(params),
+      signal: controller.signal
     });
+    clearTimeout(timer);
     const data = await resp.json();
     if (data.expirado) {
       alert('Sua sessão expirou. Faça login novamente.');
@@ -1189,7 +1221,11 @@ async function apiCall(acao, params) {
     }
     return data;
   } catch (e) {
-    return { ok: false, erro: 'Falha de conexão com a planilha: ' + e.message };
+    clearTimeout(timer);
+    const msg = e.name === 'AbortError'
+      ? 'Tempo limite atingido (30s). Verifique a conexão com a planilha.'
+      : 'Falha de conexão: ' + e.message;
+    return { ok: false, erro: msg };
   }
 }
 
@@ -1841,8 +1877,74 @@ function openModal(id) {
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
-  if(id==='modalNF') { editingNFId=null; document.getElementById('modalNFTitle').textContent='Nova Nota Fiscal'; resetNFForm(); }
+  if(id==='modalNF') {
+    editingNFId=null;
+    _tipoNF='NORMAL';
+    document.querySelectorAll('.btn-tipo-nf').forEach(b=>b.classList.remove('active'));
+    document.getElementById('btnTipoNormal')?.classList.add('active');
+    document.getElementById('grpNfOrigem').style.display='none';
+    document.getElementById('nfOrigemInfo').style.display='none';
+    document.getElementById('modalNFTitle').textContent='Nova Nota Fiscal';
+    resetNFForm();
+  }
 }
+// ====================================================
+// NOTA DE DEVOLUÇÃO
+// ====================================================
+let _tipoNF = 'NORMAL';
+
+function setTipoNF(tipo, btn) {
+  _tipoNF = tipo;
+  document.querySelectorAll('.btn-tipo-nf').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const grp = document.getElementById('grpNfOrigem');
+  grp.style.display = tipo==='DEVOLUCAO' ? '' : 'none';
+  if (tipo==='DEVOLUCAO') {
+    popularSelectNFOrigem();
+    document.getElementById('modalNFTitle').textContent = '🔄 Nova Nota de Devolução';
+  } else {
+    document.getElementById('modalNFTitle').textContent = editingNFId ? 'Editar NF' : 'Nova Nota Fiscal';
+    document.getElementById('nfOrigemInfo').style.display='none';
+  }
+}
+
+function popularSelectNFOrigem() {
+  const sel = document.getElementById('nfOrigem');
+  if (!sel) return;
+  const lista = notas.filter(n=>n.tipo!=='DEVOLUCAO')
+    .sort((a,b)=>String(b.numero).localeCompare(String(a.numero)));
+  sel.innerHTML = '<option value="">— Selecione a NF de origem —</option>';
+  lista.forEach(n=>{
+    sel.innerHTML += `<option value="${n.id}">#${n.numero} — ${n.fornecedor} — ${fmtDate(n.dataFat)} — ${fmtMoney(parseMoney(n.valorTotal))}</option>`;
+  });
+}
+
+function preencherDadosNFOrigem() {
+  const nfId = document.getElementById('nfOrigem')?.value;
+  const infoEl = document.getElementById('nfOrigemInfo');
+  if (!nfId) { infoEl.style.display='none'; return; }
+  const nf = notas.find(x=>x.id===nfId);
+  if (!nf) return;
+  document.getElementById('nfFornecedor').value = nf.fornecedor;
+  preencherCNPJ();
+  document.getElementById('nfConta').value = nf.conta;
+  const valorOrig = parseMoney(nf.valorTotal);
+  document.getElementById('nfValorTotal').value = '-' + valorOrig.toFixed(2).replace('.',',');
+  document.getElementById('nfAno').value = nf.ano;
+  document.getElementById('nfNumParcelas').value = '1';
+  gerarCamposParcelas();
+  infoEl.style.display = '';
+  infoEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">NF Origem</div><div style="font-weight:700">#${nf.numero}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Fornecedor</div><div>${nf.fornecedor}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Valor Original</div><div style="color:#991b1b;font-weight:700">${fmtMoney(valorOrig)}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Data Fat.</div><div>${fmtDate(nf.dataFat)}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Conta</div><div>${nf.conta||'—'}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Status atual</div><div>${statusBadge(calcStatus(nf))}</div></div>
+    </div>`;
+}
+
 function resetNFForm(){
   ['nfNumero','nfCNPJ','nfValorTotal','nfDataFat'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   ['nfFornecedor','nfConta','nfAno'].forEach(i=>{const el=document.getElementById(i);if(el&&el.tagName==='SELECT')el.selectedIndex=0;});
@@ -1894,7 +1996,12 @@ async function salvarNF() {
     parcelas.push({vencimento:v, valor:va, situacao:s||'A VENCER', dataPagamento:'', valorPago:''});
   }
 
+  const nfOrigemId = document.getElementById('nfOrigem')?.value||'';
+  const nfOrigemNF = nfOrigemId ? notas.find(x=>x.id===nfOrigemId) : null;
+
   const nfData = {numero,dataFat,fornecedor,cnpj,valorTotal,numParcelas,conta,ano,parcelas};
+  nfData.tipo     = _tipoNF||'NORMAL';
+  nfData.nfOrigem = nfOrigemNF ? nfOrigemNF.numero : '';
   nfData.status = calcStatus(nfData);
   nfData.validacao = editingNFId ? (notas.find(x=>x.id===editingNFId)||{}).validacao || 'AGUARDANDO VALIDAÇÃO' : 'AGUARDANDO VALIDAÇÃO';
 
@@ -1907,11 +2014,20 @@ async function salvarNF() {
 
   if (!res.ok) { alert('Erro ao salvar: ' + (res.erro || 'desconhecido')); return; }
 
-  await reloadNotas();
+  // Atualização local imediata
+  const idLocal = nfData.numero + '_' + nfData.ano;
+  const idx = notas.findIndex(x=>x.id===idLocal);
+  const nfLocal = { ...nfData, id:idLocal, historico:[] };
+  if(idx>=0) notas[idx]=nfLocal; else notas.unshift(nfLocal);
+  normalizarNotas();
+
   closeModal('modalNF');
   renderNotas();
   if (currentUser.role === 'admin') renderDashboard();
   editingNFId=null;
+
+  // Sync em background
+  reloadNotas().then(()=>{ renderNotas(); if(currentUser.role==='admin') renderDashboard(); });
 }
 
 // ====================================================
@@ -1956,8 +2072,12 @@ function renderNotasTable() {
     const canAct=canEdit();
     const canApr=canApprove();
     const showStatus = canVerPagamento();
-    return `<tr>
-      <td><strong>#${n.numero}</strong></td>
+    return `<tr${n.tipo==='DEVOLUCAO'?' style="background:#fffbeb"':''}>
+      <td>
+        <strong style="color:${n.tipo==='DEVOLUCAO'?'#d97706':'var(--accent)'}">#${n.numero}</strong>
+        ${n.tipo==='DEVOLUCAO'?`<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:4px;display:inline-block">DEV</span>`:''}
+        ${n.nfOrigem?`<div style="font-size:10px;color:var(--muted);margin-top:1px">→ NF #${n.nfOrigem}</div>`:''}
+      </td>
       <td>${fmtDate(n.dataFat)}</td>
       <td>${n.fornecedor}</td>
       <td>${fmtMoney(parseMoney(n.valorTotal))}</td>
@@ -2081,19 +2201,40 @@ async function confirmarBaixar() {
   if(!data||!valor){alert('Preencha data e valor.');return;}
   const nf=notas.find(x=>x.id===baixarTarget.nfId);
 
+  const btn = document.querySelector('#modalBaixar .btn-success');
+  if(btn){ btn.disabled=true; btn.textContent='Registrando...'; }
+
   const res = await apiCall('baixarParcela', {
     numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
     dataPagamento: data, valorPago: valor,
     juros: juros, multa: multa, obs: obs
   });
+
+  if(btn){ btn.disabled=false; btn.textContent='✅ Confirmar Pagamento'; }
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
 
-  await reloadNotas();
+  // ── Atualização OTIMISTA local — fecha o modal IMEDIATAMENTE ──────────────
+  const parcela = nf.parcelas[baixarTarget.idx];
+  if(parcela){
+    parcela.dataPagamento = data;
+    parcela.valorPago     = valor;
+    parcela.situacao      = 'PAGO';
+  }
+  // Recalcula status local da NF
+  const todasPagas = nf.parcelas.every(p=>String(p.situacao||'').toUpperCase()==='PAGO');
+  nf.status = todasPagas ? 'PAGO' : res.novoStatus || nf.status;
+
   closeModal('modalBaixar');
   closeModal('modalDetalheNF');
   renderNotas();
-  if (currentUser.role === 'admin') renderDashboard();
-  setTimeout(()=>verDetalheNF(baixarTarget.nfId),100);
+  if(currentUser.role==='admin') renderDashboard();
+
+  // Sincroniza em background — sem bloquear UI
+  reloadNotas().then(()=>{
+    renderNotas();
+    if(currentUser.role==='admin') renderDashboard();
+    setSyncBadge('ok');
+  });
 }
 
 // ====================================================
@@ -2134,9 +2275,11 @@ async function excluirNF(id) {
   const nf = notas.find(x=>x.id===id);
   const res = await apiCall('excluirNota', { numero: nf.numero, ano: nf.ano });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
-  await reloadNotas();
+  // Otimista: remove local
+  notas = notas.filter(x=>x.id!==id);
   renderNotas();
   if (currentUser.role === 'admin') renderDashboard();
+  reloadNotas().then(()=>{ renderNotas(); if(currentUser.role==='admin') renderDashboard(); });
 }
 
 // ====================================================
@@ -2993,7 +3136,17 @@ function gerarRelatorioPDF(tipo) {
     vencPeriodo:'Vencimentos por Período', cartorio:'Cartório / Protestadas',
     baixas:'Baixas (Pagamentos Realizados)', vencidosFornecedor:'Vencidos por Fornecedor'
   };
-  const css = `<style>body{font-family:Arial;font-size:11px;color:#000}h1{font-size:14px;margin-bottom:4px}p{font-size:10px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#e8e8e8;font-weight:bold}tr:nth-child(even){background:#f9f9f9}tfoot tr{background:#e0f2e9;font-weight:bold}@media print{body{margin:0}}</style>`;
+  const css = `<style>body{font-family:Arial;font-size:11px;color:#000}h1{font-size:14px;margin-bottom:4px}p{font-size:10px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#e8e8e8;font-weight:bold}tr:nth-child(even){background:#f9f9f9}tfoot tr{background:#e0f2e9;font-weight:bold}@media print{body{margin:0}}
+/* ── TIPO DE NF ──────────────────────────────────────────────────── */
+.btn-tipo-nf{
+  padding:10px 18px;border-radius:10px;border:2px solid var(--border);
+  background:#fff;color:var(--muted);font-family:var(--font);font-size:13px;
+  font-weight:600;cursor:pointer;transition:all .15s;flex:1;text-align:center;
+}
+.btn-tipo-nf:hover{border-color:var(--accent);color:var(--accent)}
+.btn-tipo-nf.active{border-color:var(--accent);background:var(--accent-pale);color:var(--accent)}
+#btnTipoDevolucao.active{border-color:#d97706;background:#fffbeb;color:#92400e}
+</style>`;
   const titulo = titulos[tipo] || tipo;
   let cabecalho = '', rows = '', totalRow = '';
 
@@ -3293,12 +3446,20 @@ async function confirmarEditarParcela() {
     obs: obs
   });
   if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
-  await reloadNotas();
+
+  // Atualização otimista local
+  if(nf && nf.parcelas[idx]){
+    nf.parcelas[idx].vencimento = novoVenc;
+    nf.parcelas[idx].situacao   = novoStatus;
+    if(res.novoStatus) nf.status = res.novoStatus;
+  }
   closeModal('modalEditarParcela');
   closeModal('modalDetalheNF');
   renderNotas();
   if(currentUser.role==='admin') renderDashboard();
-  setTimeout(()=>verDetalheNF(editarParcelaTarget.nfId),100);
+
+  // Sync em background
+  reloadNotas().then(()=>{ renderNotas(); if(currentUser.role==='admin') renderDashboard(); });
 }
 
 // ====================================================
