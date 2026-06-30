@@ -3165,8 +3165,8 @@ function getRelatorioData(tipo) {
     const fn   = document.getElementById('relFornecedor')?.value||'';
     const modo = window._relVencFornModo || 'vencidas';
     const now    = new Date(); now.setHours(0,0,0,0);
-    // Coleta parcelas vencidas/cartório agrupadas por fornecedor
-    const mapa   = {}; // { fornecedor: { parcelas:[], totalVencido, qtd, nfs:Set } }
+    // Coleta parcelas vencidas/cartório agrupadas por fornecedor — com detalhe individual
+    const mapa   = {}; // { fornecedor: { parcelas:[{nf,p,idx,diasVencido}], totalVencido, qtdParcelas, nfs:Set } }
     notas.forEach(nf=>{
       if(fn && nf.fornecedor!==fn) return;
       (nf.parcelas||[]).forEach((p,i)=>{
@@ -3179,14 +3179,17 @@ function getRelatorioData(tipo) {
         const isCartorio  = ['EM CARTÓRIO','TRÂNSITO DE CARTÓRIO','PROTESTADA'].includes(sit);
         const incluir = modo==='todos' ? (isVencida||isCartorio) : isVencida;
         if(!incluir) return;
+        const diasVencido = isVencida ? Math.floor((now-venc)/(1000*60*60*24)) : 0;
         const f = nf.fornecedor||'—';
         if(!mapa[f]) mapa[f]={parcelas:[],totalVencido:0,qtdParcelas:0,nfs:new Set()};
-        mapa[f].parcelas.push({nf,p,idx:i+1});
+        mapa[f].parcelas.push({nf,p,idx:i+1,diasVencido});
         mapa[f].totalVencido += parseMoney(p.valor);
         mapa[f].qtdParcelas++;
         mapa[f].nfs.add(nf.numero);
       });
     });
+    // Ordena parcelas de cada fornecedor por dias de atraso (mais antigo primeiro)
+    Object.values(mapa).forEach(v=>v.parcelas.sort((a,b)=>b.diasVencido-a.diasVencido));
     // Retorna array ordenado por valor vencido desc
     return Object.entries(mapa)
       .sort((a,b)=>b[1].totalVencido-a[1].totalVencido)
@@ -3220,14 +3223,23 @@ function gerarRelatorioXLS(tipo) {
   if(!data.length){alert('Nenhum dado para exportar.');return;}
   let rows;
   if(tipo==='vencidosFornecedor'){
-    rows = data.map(d=>({
-      Fornecedor:       d.fornecedor,
-      Nº_NFs:           d.qtdNFs,
-      Parcelas_Vencidas:d.qtdParcelas,
-      Total_Vencido:    d.totalVencido,
-    }));
-    const totalGeral = rows.reduce((s,r)=>s+r.Total_Vencido,0);
-    rows.push({Fornecedor:'TOTAL',Nº_NFs:'',Parcelas_Vencidas:'',Total_Vencido:totalGeral});
+    rows = [];
+    data.forEach(d=>{
+      d.parcelas.forEach(({nf,p,idx,diasVencido})=>{
+        rows.push({
+          Fornecedor:       d.fornecedor,
+          Nº_NF:            nf.numero,
+          Data_Faturamento: fmtDate(nf.dataFat),
+          Parcela:          `${idx}/${nf.numParcelas||1}`,
+          Vencimento:       fmtDate(p.vencimento),
+          Dias_Atraso:      diasVencido,
+          Status:           p.situacao||'VENCIDA',
+          Valor_Vencido:    parseMoney(p.valor),
+        });
+      });
+    });
+    const totalGeral = data.reduce((s,d)=>s+d.totalVencido,0);
+    rows.push({Fornecedor:'TOTAL GERAL',Nº_NF:'',Data_Faturamento:'',Parcela:'',Vencimento:'',Dias_Atraso:'',Status:'',Valor_Vencido:totalGeral});
   } else if(tipo==='baixas'){
     rows=data.map(({nf,p,idx})=>({
       Nº_NF:      nf.numero,
@@ -3312,11 +3324,15 @@ function gerarRelatorioPDF(tipo) {
 
   if (tipo === 'vencidosFornecedor') {
     const totalGeral = data.reduce((s,d)=>s+d.totalVencido, 0);
-    cabecalho = '<tr><th>#</th><th>Fornecedor</th><th style="text-align:center">NFs</th><th style="text-align:center">Parcelas</th><th style="text-align:right">Total Vencido</th></tr>';
-    rows = data.map((d,i)=>
-      `<tr><td style="text-align:center;color:#999">${i+1}</td><td><strong>${d.fornecedor}</strong></td><td style="text-align:center">${d.qtdNFs}</td><td style="text-align:center">${d.qtdParcelas}</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(d.totalVencido)}</td></tr>`
-    ).join('');
-    totalRow = `<tr><td colspan="4" style="text-align:right;font-weight:bold">TOTAL VENCIDO:</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(totalGeral)}</td></tr>`;
+    cabecalho = '<tr><th>Fornecedor</th><th>Nº NF</th><th>Data Fat.</th><th>Vencimento</th><th style="text-align:center">Atraso</th><th>Status</th><th style="text-align:right">Valor</th></tr>';
+    rows = data.map(d=>{
+      const linhaForn = `<tr style="background:#fce8e8"><td colspan="6"><strong>${d.fornecedor}</strong> — ${d.qtdNFs} NF(s), ${d.qtdParcelas} parcela(s)</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(d.totalVencido)}</td></tr>`;
+      const linhasDet = d.parcelas.map(({nf,p,idx,diasVencido})=>
+        `<tr><td></td><td>${nf.numero} (${idx}/${nf.numParcelas||1})</td><td>${fmtDate(nf.dataFat)}</td><td style="color:#b91c1c">${fmtDate(p.vencimento)}</td><td style="text-align:center;color:#b91c1c;font-weight:bold">+${diasVencido}d</td><td>${p.situacao||'VENCIDA'}</td><td style="text-align:right;font-weight:bold">${fmtMoney(parseMoney(p.valor))}</td></tr>`
+      ).join('');
+      return linhaForn + linhasDet;
+    }).join('');
+    totalRow = `<tr><td colspan="6" style="text-align:right;font-weight:bold">TOTAL VENCIDO GERAL:</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(totalGeral)}</td></tr>`;
   } else if (tipo === 'baixas') {
     const totalPago = data.reduce((s,{p}) => s + parseMoney(p.valorPago||p.valor), 0);
     cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Data Pag.</th><th>Valor Pago</th><th>Conta</th></tr>';
@@ -3388,44 +3404,57 @@ function gerarRelatorio(tipo) {
   // ── Caso especial: relatório agrupado por fornecedor ─────────────────────
   if (tipo === 'vencidosFornecedor') {
     const totalGeral = data.reduce((s,d)=>s+d.totalVencido, 0);
+    const totalParcelas = data.reduce((s,d)=>s+d.qtdParcelas, 0);
+
+    // Para cada fornecedor: cabeçalho-resumo + linhas detalhadas de cada NF/parcela
+    const blocos = data.map((d,fi)=>{
+      const rank = fi===0?'🥇':fi===1?'🥈':fi===2?'🥉':`#${fi+1}`;
+      const linhasDetalhe = d.parcelas.map(({nf,p,idx,diasVencido})=>`
+        <tr>
+          <td></td>
+          <td style="font-size:12px"><strong style="color:var(--accent)">#${nf.numero}</strong> <span style="color:var(--muted)">— ${idx}/${nf.numParcelas||1}</span></td>
+          <td style="font-size:12px;color:var(--muted)">${fmtDate(nf.dataFat)}</td>
+          <td style="font-size:12px;color:#b91c1c;font-weight:600">${fmtDate(p.vencimento)}</td>
+          <td style="text-align:center">
+            <span style="background:#fee2e2;color:#991b1b;font-weight:700;font-family:monospace;padding:2px 7px;border-radius:20px;font-size:11px">+${diasVencido}d</span>
+          </td>
+          <td style="font-size:12px">${statusBadge(p.situacao||'VENCIDA')}</td>
+          <td style="text-align:right;font-family:monospace;font-weight:700;color:#991b1b">${fmtMoney(parseMoney(p.valor))}</td>
+        </tr>`).join('');
+
+      return `
+        <tr style="background:#fff5f5">
+          <td style="text-align:center;font-weight:800">${rank}</td>
+          <td colspan="4">
+            <strong style="font-size:14px">${d.fornecedor}</strong>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.qtdNFs} NF(s) · ${d.qtdParcelas} parcela(s) vencida(s)</div>
+          </td>
+          <td></td>
+          <td style="text-align:right;font-weight:800;color:#991b1b;font-family:monospace;font-size:15px">${fmtMoney(d.totalVencido)}</td>
+        </tr>
+        ${linhasDetalhe}`;
+    }).join('');
+
     const thead = `<tr>
       <th style="width:36px;text-align:center">#</th>
-      <th>Fornecedor</th>
-      <th style="text-align:center">NFs</th>
-      <th style="text-align:center">Parcelas</th>
-      <th style="text-align:right">Total Vencido</th>
-      <th>Proporção</th>
+      <th>Nº NF</th>
+      <th>Data Fat.</th>
+      <th>Vencimento</th>
+      <th style="text-align:center">Atraso</th>
+      <th>Status</th>
+      <th style="text-align:right">Valor</th>
     </tr>`;
-    const maxVal = data[0]?.totalVencido || 1;
-    const tbody = data.map((d,i)=>{
-      const pct = Math.round((d.totalVencido/maxVal)*100);
-      const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-family:monospace">#${i+1}</span>`;
-      return `<tr>
-        <td style="text-align:center">${rank}</td>
-        <td>
-          <strong>${d.fornecedor}</strong>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.qtdNFs} NF(s) · ${d.qtdParcelas} parcela(s) vencida(s)</div>
-        </td>
-        <td style="text-align:center;font-weight:600">${d.qtdNFs}</td>
-        <td style="text-align:center;font-weight:600">${d.qtdParcelas}</td>
-        <td style="text-align:right;font-weight:800;color:#991b1b;font-family:monospace;font-size:14px">${fmtMoney(d.totalVencido)}</td>
-        <td style="min-width:140px;padding-right:8px">
-          <div style="background:#fee2e2;border-radius:6px;height:10px;width:100%;overflow:hidden">
-            <div style="background:linear-gradient(90deg,#b91c1c,#ef4444);height:10px;width:${pct}%;border-radius:6px;transition:width .6s ease"></div>
-          </div>
-          <div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px">${pct}%</div>
-        </td>
-      </tr>`;
-    }).join('');
+
     const tfoot = `<tr style="background:#fff5f5;font-weight:800;color:#991b1b">
-      <td colspan="4" style="text-align:right;color:var(--muted)">TOTAL VENCIDO:</td>
+      <td colspan="4" style="text-align:right;color:var(--muted)">TOTAL VENCIDO (${totalParcelas} parcelas):</td>
+      <td></td><td></td>
       <td style="text-align:right;font-family:monospace;font-size:15px">${fmtMoney(totalGeral)}</td>
-      <td></td>
     </tr>`;
+
     res.innerHTML = `
       <div class="table-wrap">
         <div class="table-toolbar" style="justify-content:space-between">
-          <div style="font-weight:700">${titulos[tipo]} &nbsp;<span style="font-size:12px;color:var(--muted);font-weight:400">${data.length} fornecedor(es)</span></div>
+          <div style="font-weight:700">${titulos[tipo]} &nbsp;<span style="font-size:12px;color:var(--muted);font-weight:400">${data.length} fornecedor(es) · ${totalParcelas} parcela(s)</span></div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('vencidosFornecedor')">📥 XLS</button>
             <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('vencidosFornecedor')">📄 PDF</button>
@@ -3434,7 +3463,7 @@ function gerarRelatorio(tipo) {
         <div style="overflow-x:auto">
           <table class="tbl">
             <thead>${thead}</thead>
-            <tbody>${tbody}</tbody>
+            <tbody>${blocos}</tbody>
             <tfoot>${tfoot}</tfoot>
           </table>
         </div>
