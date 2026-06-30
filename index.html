@@ -1067,48 +1067,79 @@ input[type=date]{color-scheme:light}
 
 <!-- MODAL BAIXAR PARCELA -->
 <div class="modal-overlay" id="modalBaixar">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header">
-      <div class="modal-title">💰 Baixar Parcela</div>
+      <div class="modal-title" id="modalBaixarTitle">💰 Baixar Parcela</div>
       <button class="modal-close" onclick="closeModal('modalBaixar')">✕</button>
     </div>
     <div class="modal-body">
-      <div id="baixarInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div id="baixarInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+
+      <!-- Tipo de baixa -->
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="font-weight:700;margin-bottom:8px;display:block">Tipo de Baixa *</label>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn-tipo-baixa active" id="btbPagamento" onclick="setTipoBaixa('PAGO',this)">
+            💰 Pagamento
+          </button>
+          <button type="button" class="btn-tipo-baixa" id="btbCancelado" onclick="setTipoBaixa('CANCELADO',this)">
+            🚫 Cancelamento
+          </button>
+          <button type="button" class="btn-tipo-baixa" id="btbAdm" onclick="setTipoBaixa('BAIXA_ADM',this)">
+            📋 Baixa Administrativa
+          </button>
+        </div>
+      </div>
+
+      <!-- Campos de Pagamento -->
+      <div id="camposPagamento">
+        <div class="form-group">
+          <label>Data de Pagamento *</label>
+          <input type="date" id="baixarData">
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Valor Original (R$)</label>
+            <input type="text" id="baixarValorOriginal" placeholder="0,00" readonly style="opacity:.7;cursor:not-allowed">
+          </div>
+          <div class="form-group">
+            <label>Valor Pago (R$) *</label>
+            <input type="text" id="baixarValor" placeholder="0,00" oninput="calcularAcrescimos()">
+          </div>
+          <div class="form-group">
+            <label>Juros pagos (R$)</label>
+            <input type="text" id="baixarJuros" placeholder="0,00" oninput="calcularAcrescimos()">
+          </div>
+          <div class="form-group">
+            <label>Multa paga (R$)</label>
+            <input type="text" id="baixarMulta" placeholder="0,00" oninput="calcularAcrescimos()">
+          </div>
+        </div>
+        <div id="baixarTotalLine" style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;justify-content:space-between;margin-bottom:12px">
+          <span style="color:var(--muted)">Total efetivamente pago:</span>
+          <span id="baixarTotalValor" style="font-weight:700;color:var(--green)">R$ 0,00</span>
+        </div>
+      </div>
+
+      <!-- Campos de Cancelamento / Baixa Administrativa -->
+      <div id="camposNaoPagamento" style="display:none">
+        <div class="form-group">
+          <label>Data da Baixa *</label>
+          <input type="date" id="baixarDataAdm">
+        </div>
+        <div class="notice notice-warn" id="noticeNaoPag" style="margin-bottom:12px">
+          🚫 <strong>Cancelamento</strong>: Nota cancelada junto ao fornecedor. Valor zerado.
+        </div>
+      </div>
+
       <div class="form-group">
-        <label>Data de Pagamento *</label>
-        <input type="date" id="baixarData">
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Valor Original (R$)</label>
-          <input type="text" id="baixarValorOriginal" placeholder="0,00" readonly
-            style="opacity:.7;cursor:not-allowed">
-        </div>
-        <div class="form-group">
-          <label>Valor Pago (R$) *</label>
-          <input type="text" id="baixarValor" placeholder="0,00" oninput="calcularAcrescimos()">
-        </div>
-        <div class="form-group">
-          <label>Juros pagos (R$)</label>
-          <input type="text" id="baixarJuros" placeholder="0,00" oninput="calcularAcrescimos()">
-        </div>
-        <div class="form-group">
-          <label>Multa paga (R$)</label>
-          <input type="text" id="baixarMulta" placeholder="0,00" oninput="calcularAcrescimos()">
-        </div>
-      </div>
-      <div id="baixarTotalLine" style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;justify-content:space-between;margin-bottom:12px">
-        <span style="color:var(--muted)">Total efetivamente pago:</span>
-        <span id="baixarTotalValor" style="font-weight:700;color:#6ee7b7">R$ 0,00</span>
-      </div>
-      <div class="form-group">
-        <label>Observação</label>
-        <input type="text" id="baixarObs" placeholder="Opcional — ex: pago com desconto negociado">
+        <label>Observação <span id="obsObrig" style="color:var(--red)">*</span></label>
+        <input type="text" id="baixarObs" placeholder="Descreva o motivo...">
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalBaixar')">Cancelar</button>
-      <button class="btn btn-success" onclick="confirmarBaixar()">✅ Confirmar Pagamento</button>
+      <button class="btn btn-success" id="btnConfirmarBaixar" onclick="confirmarBaixar()">✅ Confirmar Pagamento</button>
     </div>
   </div>
 </div>
@@ -1298,11 +1329,14 @@ async function loadData() {
 }
 
 // Recarrega só as notas (após salvar/editar/aprovar etc)
-async function reloadNotas() {
-  setSyncBadge('sync');
+async function reloadNotas(silencioso=false) {
+  // silencioso=true → não re-renderiza (só atualiza dados internos)
+  if(!silencioso) setSyncBadge('sync');
   const res = await apiCall('listarNotas', {});
-  if (res.ok) notas = res.notas;
-  normalizarNotas();
+  if(res.ok){
+    notas = res.notas;
+    normalizarNotas();
+  }
   setSyncBadge(res.ok ? 'ok' : 'erro');
   return res.ok;
 }
@@ -2167,7 +2201,57 @@ function verDetalheNF(id) {
 // ====================================================
 // BAIXAR PARCELA
 // ====================================================
+let _tipoBaixa = 'PAGO'; // 'PAGO' | 'CANCELADO' | 'BAIXA_ADM'
+
+function setTipoBaixa(tipo, btn) {
+  _tipoBaixa = tipo;
+  document.querySelectorAll('.btn-tipo-baixa').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const isPago = tipo==='PAGO';
+  document.getElementById('camposPagamento').style.display   = isPago ? '' : 'none';
+  document.getElementById('camposNaoPagamento').style.display = isPago ? 'none' : '';
+  document.getElementById('obsObrig').style.display = isPago ? 'none' : '';
+
+  const noticeEl  = document.getElementById('noticeNaoPag');
+  const btnConf   = document.getElementById('btnConfirmarBaixar');
+  const titleEl   = document.getElementById('modalBaixarTitle');
+
+  if(tipo==='CANCELADO'){
+    noticeEl.innerHTML = '🚫 <strong>Cancelamento</strong>: A nota foi cancelada junto ao fornecedor. O valor será zerado e a parcela marcada como cancelada.';
+    noticeEl.className = 'notice notice-error';
+    btnConf.className  = 'btn btn-danger';
+    btnConf.textContent= '🚫 Confirmar Cancelamento';
+    titleEl.textContent= '🚫 Cancelar Parcela';
+  } else if(tipo==='BAIXA_ADM'){
+    noticeEl.innerHTML = '📋 <strong>Baixa Administrativa</strong>: Baixa por decisão interna (ex: negociação, distrato, erro de lançamento). Informe o motivo obrigatoriamente.';
+    noticeEl.className = 'notice notice-warn';
+    btnConf.className  = 'btn btn-primary';
+    btnConf.textContent= '📋 Confirmar Baixa Adm.';
+    titleEl.textContent= '📋 Baixa Administrativa';
+  } else {
+    btnConf.className  = 'btn btn-success';
+    btnConf.textContent= '✅ Confirmar Pagamento';
+    titleEl.textContent= '💰 Baixar Parcela';
+  }
+
+  // Preenche data atual na data adm se vazio
+  if(!isPago && !document.getElementById('baixarDataAdm').value){
+    document.getElementById('baixarDataAdm').value = new Date().toISOString().slice(0,10);
+  }
+}
+
 function abrirBaixar(nfId, idx) {
+  // Resetar para tipo Pagamento
+  _tipoBaixa='PAGO';
+  document.querySelectorAll('.btn-tipo-baixa').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btbPagamento').classList.add('active');
+  document.getElementById('camposPagamento').style.display='';
+  document.getElementById('camposNaoPagamento').style.display='none';
+  document.getElementById('obsObrig').style.display='none';
+  document.getElementById('btnConfirmarBaixar').className='btn btn-success';
+  document.getElementById('btnConfirmarBaixar').textContent='✅ Confirmar Pagamento';
+  document.getElementById('modalBaixarTitle').textContent='💰 Baixar Parcela';
   baixarTarget={nfId,idx};
   const nf=notas.find(x=>x.id===nfId);
   const p=nf.parcelas[idx];
@@ -2193,47 +2277,70 @@ function calcularAcrescimos() {
   document.getElementById('baixarTotalValor').textContent = fmtMoney(total);
 }
 async function confirmarBaixar() {
-  const data=document.getElementById('baixarData').value;
-  const valor=document.getElementById('baixarValor').value;
-  const juros=document.getElementById('baixarJuros').value||'0';
-  const multa=document.getElementById('baixarMulta').value||'0';
-  const obs=document.getElementById('baixarObs').value;
-  if(!data||!valor){alert('Preencha data e valor.');return;}
-  const nf=notas.find(x=>x.id===baixarTarget.nfId);
+  const nf  = notas.find(x=>x.id===baixarTarget.nfId);
+  if (!nf) return;
+  const obs = document.getElementById('baixarObs').value.trim();
 
-  const btn = document.querySelector('#modalBaixar .btn-success');
-  if(btn){ btn.disabled=true; btn.textContent='Registrando...'; }
+  // ── Validação por tipo ───────────────────────────────────────────────────
+  let data='', valor='', juros='0', multa='0', situacaoFinal='';
 
-  const res = await apiCall('baixarParcela', {
-    numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
-    dataPagamento: data, valorPago: valor,
-    juros: juros, multa: multa, obs: obs
-  });
+  if (_tipoBaixa==='PAGO') {
+    data  = document.getElementById('baixarData').value;
+    valor = document.getElementById('baixarValor').value;
+    juros = document.getElementById('baixarJuros').value||'0';
+    multa = document.getElementById('baixarMulta').value||'0';
+    if(!data||!valor){ alert('Preencha data e valor pago.'); return; }
+    situacaoFinal = 'PAGO';
+  } else if (_tipoBaixa==='CANCELADO') {
+    data  = document.getElementById('baixarDataAdm').value || new Date().toISOString().slice(0,10);
+    valor = '0';
+    if(!obs){ alert('Informe o motivo do cancelamento.'); document.getElementById('baixarObs').focus(); return; }
+    situacaoFinal = 'CANCELADO';
+  } else { // BAIXA_ADM
+    data  = document.getElementById('baixarDataAdm').value || new Date().toISOString().slice(0,10);
+    valor = '0';
+    if(!obs){ alert('Informe o motivo da baixa administrativa.'); document.getElementById('baixarObs').focus(); return; }
+    situacaoFinal = 'BAIXA ADM';
+  }
 
-  if(btn){ btn.disabled=false; btn.textContent='✅ Confirmar Pagamento'; }
-  if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
-
-  // ── Atualização OTIMISTA local — fecha o modal IMEDIATAMENTE ──────────────
+  // ── Otimista IMEDIATO — fecha modal antes de chamar GAS ─────────────────
   const parcela = nf.parcelas[baixarTarget.idx];
+  const parcelaAntes = parcela ? {...parcela} : null;
   if(parcela){
     parcela.dataPagamento = data;
     parcela.valorPago     = valor;
-    parcela.situacao      = 'PAGO';
+    parcela.situacao      = situacaoFinal;
   }
-  // Recalcula status local da NF
-  const todasPagas = nf.parcelas.every(p=>String(p.situacao||'').toUpperCase()==='PAGO');
-  nf.status = todasPagas ? 'PAGO' : res.novoStatus || nf.status;
+  const todasEncerradas = nf.parcelas.every(p=>{
+    const s=String(p.situacao||'').toUpperCase();
+    return s==='PAGO'||s==='CANCELADO'||s==='BAIXA ADM';
+  });
+  const statusAntes = nf.status;
+  nf.status = todasEncerradas ? situacaoFinal : nf.status;
 
   closeModal('modalBaixar');
   closeModal('modalDetalheNF');
   renderNotas();
   if(currentUser.role==='admin') renderDashboard();
 
-  // Sincroniza em background — sem bloquear UI
-  reloadNotas().then(()=>{
-    renderNotas();
-    if(currentUser.role==='admin') renderDashboard();
-    setSyncBadge('ok');
+  // ── GAS em background — reverte se falhar ───────────────────────────────
+  apiCall('baixarParcela', {
+    numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
+    dataPagamento: data, valorPago: valor,
+    juros, multa,
+    obs: (_tipoBaixa!=='PAGO' ? '['+_tipoBaixa+'] ' : '') + obs,
+    situacao: situacaoFinal
+  }).then(res=>{
+    if(!res.ok){
+      // Reverte estado local
+      if(parcela && parcelaAntes) Object.assign(parcela, parcelaAntes);
+      nf.status = statusAntes;
+      renderNotas();
+      alert('Erro ao registrar baixa: '+(res.erro||''));
+    } else {
+      if(res.novoStatus) nf.status = res.novoStatus;
+      reloadNotas(true).then(()=>setSyncBadge('ok'));
+    }
   });
 }
 
@@ -2358,13 +2465,20 @@ function _renderAprovacaoLista(lista) {
 async function aprovarNF(nfId) {
   const nf = notas.find(x=>x.id===nfId);
   if (!nf) return;
-  const res = await apiCall('aprovarNota', { numero: nf.numero, ano: nf.ano });
-  if (!res.ok) { alert('Erro: '+(res.erro||'')); return; }
-  // Atualização otimista local
+  // Otimista IMEDIATO — atualiza e re-renderiza antes mesmo de chamar o GAS
   nf.validacao = 'VALIDADO';
   filterAprovacao();
   renderNotas();
-  reloadNotas().then(()=>{ filterAprovacao(); renderNotas(); });
+  // Chama GAS em background — silencioso para não causar flash
+  apiCall('aprovarNota', { numero: nf.numero, ano: nf.ano }).then(res=>{
+    if (!res.ok) {
+      nf.validacao = 'AGUARDANDO VALIDAÇÃO'; // reverte se falhou
+      filterAprovacao(); renderNotas();
+      alert('Erro ao aprovar: '+(res.erro||''));
+    } else {
+      reloadNotas(true); // só atualiza dados, não re-renderiza
+    }
+  });
 }
 
 async function recusarNF(nfId) {
@@ -2372,13 +2486,21 @@ async function recusarNF(nfId) {
   if (!nf) return;
   const motivo = prompt('Motivo da recusa (obrigatório):');
   if (!motivo || !motivo.trim()) return;
-  const res = await apiCall('recusarNota', { numero: nf.numero, ano: nf.ano, motivo: motivo.trim() });
-  if (!res.ok) { alert('Erro: '+(res.erro||'')); return; }
-  // Atualização otimista local — NF sai da fila imediatamente
+  // Otimista IMEDIATO — some da fila na hora
+  const validacaoAnterior = nf.validacao;
   nf.validacao = 'RECUSADO: ' + motivo.trim();
-  filterAprovacao(); // com o filtro padrão (AGUARDANDO), a nota some
+  filterAprovacao();
   renderNotas();
-  reloadNotas().then(()=>{ filterAprovacao(); renderNotas(); });
+  // GAS em background
+  apiCall('recusarNota', { numero: nf.numero, ano: nf.ano, motivo: motivo.trim() }).then(res=>{
+    if (!res.ok) {
+      nf.validacao = validacaoAnterior; // reverte se falhou
+      filterAprovacao(); renderNotas();
+      alert('Erro ao recusar: '+(res.erro||''));
+    } else {
+      reloadNotas(true);
+    }
+  });
 }
 
 // ====================================================
@@ -3173,6 +3295,17 @@ function gerarRelatorioPDF(tipo) {
 .btn-tipo-nf:hover{border-color:var(--accent);color:var(--accent)}
 .btn-tipo-nf.active{border-color:var(--accent);background:var(--accent-pale);color:var(--accent)}
 #btnTipoDevolucao.active{border-color:#d97706;background:#fffbeb;color:#92400e}
+
+/* ── TIPO DE BAIXA ─────────────────────────────────────────────── */
+.btn-tipo-baixa{
+  flex:1;padding:9px 12px;border-radius:10px;border:2px solid var(--border);
+  background:#fff;color:var(--muted);font-family:var(--font);font-size:12px;
+  font-weight:600;cursor:pointer;transition:all .15s;text-align:center;
+}
+.btn-tipo-baixa:hover{border-color:var(--accent);color:var(--accent)}
+#btbPagamento.active{border-color:#16a34a;background:#f0fdf4;color:#15803d}
+#btbCancelado.active{border-color:#dc2626;background:#fef2f2;color:#b91c1c}
+#btbAdm.active{border-color:#d97706;background:#fffbeb;color:#92400e}
 </style>`;
   const titulo = titulos[tipo] || tipo;
   let cabecalho = '', rows = '', totalRow = '';
