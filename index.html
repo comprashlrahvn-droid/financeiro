@@ -1239,9 +1239,9 @@ async function apiCall(acao, params) {
   params.acao = acao;
   if (authToken) params.token = authToken;
 
-  // Timeout de 30s — GAS pode ser lento mas não deve travar para sempre
+  // Timeout de 55s — GAS pode demorar em planilhas grandes
   const controller = new AbortController();
-  const timer = setTimeout(()=>controller.abort(), 30000);
+  const timer = setTimeout(()=>controller.abort(), 55000);
 
   try {
     const resp = await fetch(GAS_URL, {
@@ -1260,7 +1260,7 @@ async function apiCall(acao, params) {
   } catch (e) {
     clearTimeout(timer);
     const msg = e.name === 'AbortError'
-      ? 'Tempo limite atingido (30s). Verifique a conexão com a planilha.'
+      ? 'Tempo limite atingido (55s). A nota pode ter sido salva — clique em Atualizar para verificar antes de tentar novamente.'
       : 'Falha de conexão: ' + e.message;
     return { ok: false, erro: msg };
   }
@@ -2074,7 +2074,14 @@ async function salvarNF() {
   const btn = document.getElementById('btnSalvarNF');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
 
-  const res = await apiCall('salvarNota', { nota: JSON.stringify(nfData) });
+  let res = await apiCall('salvarNota', { nota: JSON.stringify(nfData) });
+
+  // Retry automático se der timeout — GAS às vezes leva mais tempo na primeira chamada
+  if (!res.ok && res.erro && res.erro.includes('Tempo limite')) {
+    btn.textContent = '⏳ Tentando novamente...';
+    await new Promise(r => setTimeout(r, 2000)); // aguarda 2s
+    res = await apiCall('salvarNota', { nota: JSON.stringify(nfData) });
+  }
 
   btn.disabled = false; btn.textContent = '💾 Salvar NF';
 
