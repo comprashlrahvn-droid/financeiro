@@ -530,7 +530,13 @@ input[type=date]{color-scheme:light}
       <div class="main-header-title" id="mainHeaderTitle">
         <span>Dashboard</span><span class="breadcrumb">/ Visão Geral</span>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="atualizarTudo(this)" title="Buscar dados atualizados da planilha"
+          style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:var(--font)"
+          onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          🔄 Atualizar
+        </button>
         <div style="font-size:12px;color:var(--muted)" id="mainHeaderDate"></div>
       </div>
     </div>
@@ -547,7 +553,7 @@ input[type=date]{color-scheme:light}
             <option value="2025">2025</option>
             <option value="2026" selected>2026</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="renderDashboard()">🔄 Atualizar</button>
+          <button class="btn btn-ghost btn-sm" onclick="atualizarTudo(this)">🔄 Atualizar</button>
         </div>
       </div>
       <div class="kpi-grid" id="kpiGrid"></div>
@@ -1306,8 +1312,34 @@ function trocarPlanilha() {
 // ====================================================
 // CARREGAMENTO DE DADOS (via API)
 // ====================================================
+// Recarrega TUDO do GAS e re-renderiza todas as telas
+async function atualizarTudo(btn) {
+  if (btn) {
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Atualizando...';
+    await loadData();
+    populateSelects();
+    popularSelectsContas();
+    renderNotas();
+    renderFornecedores();
+    if (currentUser.role === 'admin') renderDashboard();
+    // Atualiza a página ativa também
+    const paginaAtiva = document.querySelector('.page.active');
+    if (paginaAtiva?.id === 'page-aprovacao') filterAprovacao();
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  } else {
+    await loadData();
+    populateSelects();
+    popularSelectsContas();
+    renderNotas();
+    renderFornecedores();
+    if (currentUser.role === 'admin') renderDashboard();
+  }
+}
+
 async function loadData() {
-  setSyncBadge('sync');
   const promises = [
     apiCall('listarNotas', {}),
     apiCall('listarFornecedores', {})
