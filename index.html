@@ -1014,12 +1014,19 @@ input[type=date]{color-scheme:light}
 
       <div id="tabXML" class="tab-content">
         <div class="notice notice-info">💡 Importe um arquivo XML de NF-e para preencher automaticamente os dados da nota fiscal.</div>
-        <div class="xml-drop" id="xmlDrop" onclick="document.getElementById('xmlFile').click()" ondragover="xmlDragOver(event)" ondrop="xmlDrop2(event)" ondragleave="this.classList.remove('drag')">
-          <div class="xml-icon">📁</div>
-          <div class="xml-text">Clique ou arraste seu arquivo <strong>XML da NF-e</strong> aqui</div>
+        <div class="xml-drop" id="xmlDrop"
+          onclick="document.getElementById('xmlFile').value='';document.getElementById('xmlFile').click()"
+          ondragover="xmlDragOver(event)"
+          ondrop="xmlDrop2(event)"
+          ondragleave="this.classList.remove('drag')">
+          <div class="xml-icon" id="xmlDropIcon">📁</div>
+          <div class="xml-text" id="xmlDropText">Clique ou arraste seu arquivo <strong>XML da NF-e</strong> aqui</div>
           <div class="xml-text" style="margin-top:4px;font-size:11px">Campos serão preenchidos automaticamente</div>
         </div>
-        <input type="file" id="xmlFile" accept=".xml" style="display:none" onchange="parseXML(this)">
+        <!-- input fora de qualquer tab-content para evitar que display:none suprima o onchange -->
+        <input type="file" id="xmlFile" accept=".xml"
+          style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none"
+          onchange="if(this.files[0]){parseXMLcomFeedback(this.files[0]);this.value='';}">
         <div id="xmlPreview" style="display:none">
           <div id="xmlInfoBanner" class="notice notice-success">✅ XML lido com sucesso! Revise os dados, selecione a <strong>Conta Financeira</strong> e clique em Salvar.</div>
           <div class="form-grid">
@@ -1821,11 +1828,23 @@ function xmlDrop2(e){
   e.preventDefault();
   document.getElementById('xmlDrop').classList.remove('drag');
   const file=e.dataTransfer.files[0];
-  if(file && file.name.endsWith('.xml')) readXML(file);
+  if(file && file.name.toLowerCase().endsWith('.xml')) parseXMLcomFeedback(file);
+  else alert('Selecione um arquivo .xml de NF-e.');
 }
 function parseXML(input){
   const file=input.files[0];
-  if(file) readXML(file);
+  if(file) parseXMLcomFeedback(file);
+}
+
+// Wrapper com feedback visual — mostra spinner enquanto processa
+function parseXMLcomFeedback(file) {
+  const iconEl = document.getElementById('xmlDropIcon');
+  const textEl = document.getElementById('xmlDropText');
+  if(iconEl) iconEl.textContent = '⏳';
+  if(textEl) textEl.innerHTML = 'Lendo <strong>' + file.name + '</strong>...';
+
+  // Pequeno delay para o browser renderizar o feedback antes de processar
+  setTimeout(()=>readXML(file), 50);
 }
 function readXML(file){
   const reader=new FileReader();
@@ -1850,6 +1869,14 @@ function readXML(file){
 }
 
 function processXMLContent(content){
+    const iconEl = document.getElementById('xmlDropIcon');
+    const textEl = document.getElementById('xmlDropText');
+    const resetDrop = (ok) => {
+      if(iconEl) iconEl.textContent = ok ? '✅' : '📁';
+      if(textEl) textEl.innerHTML  = ok
+        ? 'XML lido! Clique aqui para carregar outro arquivo.'
+        : 'Clique ou arraste seu arquivo <strong>XML da NF-e</strong> aqui';
+    };
     try {
       const parser=new DOMParser();
       const doc=parser.parseFromString(content,'text/xml');
@@ -1923,8 +1950,9 @@ function processXMLContent(content){
       }
 
       document.getElementById('xmlPreview').style.display='block';
+      resetDrop(true);
 
-    } catch(err){ alert('Erro ao processar o XML: '+err.message+'\n\nVerifique se o arquivo é um XML de NF-e válido.'); }
+    } catch(err){ resetDrop(false); alert('Erro ao processar o XML: '+err.message+'\n\nVerifique se o arquivo é um XML de NF-e válido.'); }
 }
 
 // ====================================================
