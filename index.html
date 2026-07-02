@@ -557,13 +557,21 @@ input[type=date]{color-scheme:light}
         </div>
       </div>
       <div class="kpi-grid" id="kpiGrid"></div>
+      <!-- KPIs Tempo Médio de Pagamento -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px" id="kpiTempoPag"></div>
+
       <div class="charts-grid">
         <div class="chart-card">
           <div class="chart-title">📈 Notas por Status</div>
           <div class="chart-wrap"><canvas id="chartStatus"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">💰 Valor por Conta Financeira</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="chart-title" style="margin:0">💰 Valor por Conta Financeira</div>
+            <select id="filtContasMes" onchange="renderDashboard()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font)">
+              <option value="all">Total</option>
+            </select>
+          </div>
           <div class="chart-wrap"><canvas id="chartContas"></canvas></div>
         </div>
         <div class="chart-card">
@@ -571,7 +579,12 @@ input[type=date]{color-scheme:light}
           <div class="chart-wrap"><canvas id="chartMeses"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">🏢 Top 10 Fornecedores (valor)</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="chart-title" style="margin:0">🏢 Top 10 Fornecedores</div>
+            <select id="filtFornMes" onchange="renderDashboard()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font)">
+              <option value="all">Total</option>
+            </select>
+          </div>
           <div class="chart-wrap"><canvas id="chartForn"></canvas></div>
         </div>
       </div>
@@ -985,11 +998,15 @@ input[type=date]{color-scheme:light}
           <div class="form-group"><label>CNPJ</label><input type="text" id="nfCNPJ" placeholder="00.000.000/0000-00"></div>
           <div class="form-group"><label>Valor Total NF (R$) *</label><input type="text" id="nfValorTotal" placeholder="0,00" oninput="calcParcelas()"></div>
           <div class="form-group"><label>Nº de Parcelas *</label>
-            <select id="nfNumParcelas" onchange="gerarCamposParcelas()">
-              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-              <option value="7">7</option><option value="8">8</option>
-            </select>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" onclick="alterarNrParcelas(-1)"
+                style="width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:18px;cursor:pointer;font-weight:700;color:#dc2626;line-height:1">−</button>
+              <input type="number" id="nfNumParcelas" value="1" min="1" max="8" readonly
+                style="width:52px;text-align:center;font-weight:700;font-size:15px;border:1px solid var(--border);border-radius:7px;padding:5px;background:#fff;color:var(--text)">
+              <button type="button" onclick="alterarNrParcelas(1)"
+                style="width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:18px;cursor:pointer;font-weight:700;color:#16a34a;line-height:1">+</button>
+              <span style="font-size:11px;color:var(--muted)">máx. 8</span>
+            </div>
           </div>
           <div class="form-group"><label>Conta Financeira *</label>
             <select id="nfConta">
@@ -1245,8 +1262,9 @@ async function apiCall(acao, params) {
   params = params || {};
   params.acao = acao;
   if (authToken) params.token = authToken;
+  // Cache-busting: força o GAS a não usar resposta cacheada
+  params._t = Date.now();
 
-  // Timeout de 55s — GAS pode demorar em planilhas grandes
   const controller = new AbortController();
   const timer = setTimeout(()=>controller.abort(), 55000);
 
@@ -1273,12 +1291,34 @@ async function apiCall(acao, params) {
   }
 }
 
+// Auto-refresh silencioso a cada 5 minutos — mantém dados sempre atualizados
+let _autoRefreshTimer = null;
+function iniciarAutoRefresh() {
+  if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+  _autoRefreshTimer = setInterval(async () => {
+    if (!authToken || document.hidden) return; // não atualiza se aba estiver em background
+    await reloadNotas(true); // silencioso — sem re-renderizar
+    // Re-renderiza só a página ativa para não causar flash
+    const paginaAtiva = document.querySelector('.page.active');
+    if (!paginaAtiva) return;
+    const id = paginaAtiva.id.replace('page-','');
+    if (id === 'notas')      renderNotas();
+    if (id === 'aprovacao')  filterAprovacao();
+    if (id === 'dashboard' && currentUser?.role === 'admin') renderDashboard();
+    setSyncBadge('ok');
+  }, 5 * 60 * 1000); // 5 minutos
+}
+
 function setSyncBadge(status) {
   const el = document.getElementById('syncBadge');
   if (!el) return;
-  if (status === 'ok')      el.innerHTML = '🟢 Conectado';
-  else if (status === 'sync') el.innerHTML = '🔄 Sincronizando...';
-  else                       el.innerHTML = '🔴 Offline';
+  const agora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  if (status === 'ok')
+    el.innerHTML = `<span style="color:#4ade80">●</span><span style="color:rgba(255,255,255,.55)">Atualizado ${agora}</span>`;
+  else if (status === 'sync')
+    el.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block;color:rgba(255,255,255,.7)">⟳</span><span style="color:rgba(255,255,255,.55)">Atualizando...</span>`;
+  else
+    el.innerHTML = `<span style="color:#f87171">●</span><span style="color:rgba(255,255,255,.55)">Erro — clique em Atualizar</span>`;
 }
 
 // ====================================================
@@ -1435,8 +1475,7 @@ async function doLogin() {
   if(av && currentUser.nome) av.textContent = currentUser.nome.charAt(0).toUpperCase();
 
   aplicarPermissoes();
-
-  // Mostra a tela imediatamente — dados carregam em background
+  iniciarAutoRefresh(); // auto-refresh a cada 5 minutos — dados carregam em background
   if (currentUser.role === 'admin') {
     goPage('dashboard', document.getElementById('navDashboard'));
   } else {
@@ -1571,6 +1610,7 @@ function aplicarPermissoes() {
 }
 
 function doLogout() {
+  if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
   currentUser = null;
   authToken = '';
   localStorage.removeItem('nf_token');
@@ -1768,6 +1808,40 @@ function preencherCNPJ() {
 // ====================================================
 // PARCELAS CAMPOS
 // ====================================================
+function alterarNrParcelas(delta) {
+  const el  = document.getElementById('nfNumParcelas');
+  const cur = parseInt(el.value)||1;
+  const novo = Math.min(8, Math.max(1, cur + delta));
+  if(novo === cur) return;
+
+  // Salva dados atuais antes de redesenhar
+  const dadosAtuais = [];
+  for(let i=1; i<=cur; i++){
+    dadosAtuais.push({
+      venc: document.getElementById(`parc${i}_venc`)?.value || '',
+      val:  document.getElementById(`parc${i}_val`)?.value  || '',
+      sit:  document.getElementById(`parc${i}_sit`)?.value  || 'A VENCER',
+    });
+  }
+
+  el.value = novo;
+  gerarCamposParcelas();
+
+  // Restaura dados salvos (parcelas existentes não perdem valores)
+  setTimeout(()=>{
+    for(let i=1; i<=novo; i++){
+      const prev = dadosAtuais[i-1];
+      if(!prev) break;
+      const ve = document.getElementById(`parc${i}_venc`);
+      const va = document.getElementById(`parc${i}_val`);
+      const si = document.getElementById(`parc${i}_sit`);
+      if(ve && prev.venc) ve.value = prev.venc;
+      if(va && prev.val)  va.value  = prev.val;
+      if(si && prev.sit)  si.value  = prev.sit;
+    }
+  }, 30);
+}
+
 function gerarCamposParcelas() {
   const n = parseInt(document.getElementById('nfNumParcelas').value)||1;
   const total = parseMoney(document.getElementById('nfValorTotal').value)||0;
@@ -2864,9 +2938,9 @@ function renderDashboard() {
   const statusCounts={PAGO:countPago,VENCIDA:countVenc,'PRÓXIMO VENCIMENTO':countProximo,'A VENCER':countAvencer};
   renderChart('chartStatus','doughnut',Object.keys(statusCounts),Object.values(statusCounts),['#10b981','#ef4444','#f59e0b','#3b82f6']);
 
-  const contasMap={};
-  filtered.forEach(n=>{const c=n.conta||'OUTROS';contasMap[c]=(contasMap[c]||0)+parseMoney(n.valorTotal);});
-  const contasSorted=Object.entries(contasMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const contasMapFilt={};
+  filtrarPorMes(filtered, curContas).forEach(n=>{const ct=n.conta||'OUTROS';contasMapFilt[ct]=(contasMapFilt[ct]||0)+parseMoney(n.valorTotal);});
+  const contasSorted=Object.entries(contasMapFilt).sort((a,b)=>b[1]-a[1]).slice(0,8);
   renderChart('chartContas','bar',contasSorted.map(x=>x[0]),contasSorted.map(x=>x[1]),['#6366f1'],true);
 
   const mesesMap={};
@@ -2884,10 +2958,106 @@ function renderDashboard() {
   const mesesLabels=mesesSorted.map(([k])=>{const[y,m]=k.split('-');return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1]}/${y.slice(2)}`});
   renderChart('chartMeses','line',mesesLabels,mesesSorted.map(x=>x[1]),['#2f7d5e'],true);
 
-  const fornMap={};
-  filtered.forEach(n=>{const f=n.fornecedor||'—';fornMap[f]=(fornMap[f]||0)+parseMoney(n.valorTotal);});
-  const fornTop=Object.entries(fornMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  // ── Popular selects de mês para filtros mensais ──────────────────────────
+  const mesesDisponiveis = [...new Set(
+    filtered.flatMap(n=>(n.parcelas||[])
+      .filter(p=>p.vencimento)
+      .map(p=>p.vencimento.slice(0,7))
+    ).concat(
+      filtered.filter(n=>n.dataFat).map(n=>n.dataFat.slice(0,7))
+    )
+  )].filter(Boolean).sort();
+
+  const optsMeses = '<option value="all">Total</option>' +
+    mesesDisponiveis.map(m=>{
+      const [y,mo]=m.split('-');
+      const label=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]+'/'+y.slice(2);
+      return `<option value="${m}">${label}</option>`;
+    }).join('');
+
+  const selForn  = document.getElementById('filtFornMes');
+  const selContas= document.getElementById('filtContasMes');
+  const curForn  = selForn?.value  || 'all';
+  const curContas= selContas?.value|| 'all';
+  if(selForn)  selForn.innerHTML  = optsMeses;
+  if(selContas)selContas.innerHTML= optsMeses;
+  if(selForn)  selForn.value  = curForn;
+  if(selContas)selContas.value= curContas;
+
+  // ── Filtrar notas pelo mês selecionado ────────────────────────────────────
+  const filtrarPorMes = (lista, mes) => mes==='all' ? lista :
+    lista.filter(n => n.dataFat && n.dataFat.slice(0,7) === mes);
+
+  // ── Chart Fornecedores (com filtro mensal) ────────────────────────────────
+  const fornMapFilt={};
+  filtrarPorMes(filtered, curForn).forEach(n=>{
+    const f=n.fornecedor||'—';
+    fornMapFilt[f]=(fornMapFilt[f]||0)+parseMoney(n.valorTotal);
+  });
+  const fornTop=Object.entries(fornMapFilt).sort((a,b)=>b[1]-a[1]).slice(0,10);
   renderChart('chartForn','bar',fornTop.map(x=>x[0]),fornTop.map(x=>x[1]),['#1e6647'],true,true);
+
+  // ── KPI Tempo Médio de Pagamento ──────────────────────────────────────────
+  const parcelasPagas = [];
+  filtered.forEach(nf=>{
+    (nf.parcelas||[]).forEach(p=>{
+      const sit = String(p.situacao||'').toUpperCase();
+      if(sit !== 'PAGO') return;
+      if(!p.vencimento || !p.dataPagamento) return;
+      const venc = new Date(p.vencimento);   venc.setHours(0,0,0,0);
+      const pag  = new Date(p.dataPagamento);pag.setHours(0,0,0,0);
+      if(isNaN(venc) || isNaN(pag)) return;
+      const diasAtraso = Math.floor((pag - venc) / (1000*60*60*24));
+      const mes = p.dataPagamento.slice(0,7);
+      parcelasPagas.push({ diasAtraso, mes, valor: parseMoney(p.valor) });
+    });
+  });
+
+  // Média geral
+  const mediaGeral = parcelasPagas.length
+    ? Math.round(parcelasPagas.reduce((s,x)=>s+Math.max(0,x.diasAtraso),0) / parcelasPagas.length)
+    : 0;
+
+  // % pagas em dia (diasAtraso <= 0)
+  const pagas = parcelasPagas.length;
+  const pagasNoDia = parcelasPagas.filter(x=>x.diasAtraso<=0).length;
+  const pctDia = pagas ? Math.round((pagasNoDia/pagas)*100) : 0;
+  const pctAtraso = 100 - pctDia;
+
+  // Média por mês — últimos 6 meses
+  const mediaMesMap = {};
+  parcelasPagas.forEach(x=>{
+    if(!mediaMesMap[x.mes]) mediaMesMap[x.mes]={soma:0,count:0};
+    mediaMesMap[x.mes].soma  += Math.max(0, x.diasAtraso);
+    mediaMesMap[x.mes].count += 1;
+  });
+  const ultimosMeses = Object.keys(mediaMesMap).sort().slice(-6);
+  const labelMeses   = ultimosMeses.map(m=>{
+    const [y,mo]=m.split('-');
+    return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]+'/'+y.slice(2);
+  });
+  const mediaMeses = ultimosMeses.map(m=>Math.round(mediaMesMap[m].soma/mediaMesMap[m].count));
+
+  document.getElementById('kpiTempoPag').innerHTML = `
+    <div class="kpi ${mediaGeral>10?'red':mediaGeral>3?'yellow':'green'}">
+      <div class="kpi-label">⏱️ Tempo Médio de Pagamento</div>
+      <div class="kpi-value">${pagas?mediaGeral+'d':'—'}</div>
+      <div class="kpi-sub">média de dias após vencimento · ${pagas} parcelas pagas</div>
+    </div>
+    <div class="kpi ${pctDia>=80?'green':pctDia>=50?'yellow':'red'}">
+      <div class="kpi-label">✅ Pagas no Prazo</div>
+      <div class="kpi-value">${pagas?pctDia+'%':'—'}</div>
+      <div class="kpi-sub">${pagasNoDia} de ${pagas} parcelas · ${pctAtraso}% com atraso</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">📊 Evolução Mensal (dias)</div>
+      <div class="kpi-value" style="font-size:13px;line-height:1.4">${
+        ultimosMeses.length
+          ? ultimosMeses.map((m,i)=>`<span style="font-size:11px;color:var(--muted)">${labelMeses[i]}</span> <strong style="color:${mediaMeses[i]>10?'#dc2626':mediaMeses[i]>3?'#d97706':'#16a34a'}">${mediaMeses[i]}d</strong>`).join(' &nbsp;')
+          : '—'
+      }</div>
+      <div class="kpi-sub">média de dias em atraso por mês</div>
+    </div>`;
 
   // ── KPI Multas/Juros por Fornecedor ─────────────────────────────────────────
   // FONTE ÚNICA: aba ACRESCIMOS do GAS (só tem dados quando juros/multa > 0)
