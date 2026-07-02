@@ -1475,20 +1475,35 @@ async function doLogin() {
   if(av && currentUser.nome) av.textContent = currentUser.nome.charAt(0).toUpperCase();
 
   aplicarPermissoes();
-  iniciarAutoRefresh(); // auto-refresh a cada 5 minutos — dados carregam em background
+
+  // Mostra spinner de carregamento no conteúdo enquanto busca dados
+  setSyncBadge('sync');
+
+  // Navega imediatamente para a tela correta com loading visual
   if (currentUser.role === 'admin') {
     goPage('dashboard', document.getElementById('navDashboard'));
+    // Skeleton loading nos KPIs enquanto dados chegam
+    const kpiEl = document.getElementById('kpiGrid');
+    if(kpiEl) kpiEl.innerHTML = Array(6).fill(`
+      <div class="kpi" style="opacity:.5">
+        <div class="skeleton" style="height:12px;width:60%;margin-bottom:10px"></div>
+        <div class="skeleton" style="height:28px;width:80%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:10px;width:50%"></div>
+      </div>`).join('');
   } else {
     goPage('notas', document.querySelector('[data-page="notas"]'));
   }
 
-  // Carrega dados em paralelo sem bloquear a UI
+  // Carrega dados do GAS
   loadData().then(() => {
     populateSelects();
     popularSelectsContas();
+    normalizarNotas();
     renderNotas();
     renderFornecedores();
     if (currentUser.role === 'admin') renderDashboard();
+    iniciarAutoRefresh();
+    setSyncBadge('ok');
   });
 }
 document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
@@ -1640,7 +1655,7 @@ function goPage(id, btn) {
   if(btn) btn.classList.add('active');
   if(id==='aprovacao') renderAprovacao();
   if(id==='relatorios') populateRelFornSelect();
-  if(id==='dashboard') renderDashboard();
+  if(id==='dashboard' && notas.length > 0) renderDashboard(); // só renderiza se dados já carregaram
   if(id==='usuarios') renderUsuarios();
   if(id==='contas') renderListaContas();
 
