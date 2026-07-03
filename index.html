@@ -2973,15 +2973,18 @@ function renderDashboard() {
   const mesesLabels=mesesSorted.map(([k])=>{const[y,m]=k.split('-');return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1]}/${y.slice(2)}`});
   renderChart('chartMeses','line',mesesLabels,mesesSorted.map(x=>x[1]),['#2f7d5e'],true);
 
-  // ── Popular selects de mês para filtros mensais ──────────────────────────
-  const mesesDisponiveis = [...new Set(
-    filtered.flatMap(n=>(n.parcelas||[])
-      .filter(p=>p.vencimento)
-      .map(p=>p.vencimento.slice(0,7))
-    ).concat(
-      filtered.filter(n=>n.dataFat).map(n=>n.dataFat.slice(0,7))
-    )
-  )].filter(Boolean).sort();
+  // ── Popular selects de mês — coleta todos meses que aparecem nos dados ──
+  const mesesSet = new Set();
+  filtered.forEach(n => {
+    // Mês de faturamento
+    if(n.dataFat && n.dataFat.length>=7) mesesSet.add(n.dataFat.slice(0,7));
+    // Mês de cada parcela (vencimento)
+    (n.parcelas||[]).forEach(p => {
+      if(p.vencimento && p.vencimento.length>=7) mesesSet.add(p.vencimento.slice(0,7));
+      if(p.dataPagamento && p.dataPagamento.length>=7) mesesSet.add(p.dataPagamento.slice(0,7));
+    });
+  });
+  const mesesDisponiveis = [...mesesSet].filter(m=>/^\d{4}-\d{2}$/.test(m)).sort();
 
   const optsMeses = '<option value="all">Total</option>' +
     mesesDisponiveis.map(m=>{
@@ -3000,8 +3003,17 @@ function renderDashboard() {
   if(selContas)selContas.value= curContas;
 
   // ── Filtrar notas pelo mês selecionado ────────────────────────────────────
-  const filtrarPorMes = (lista, mes) => mes==='all' ? lista :
-    lista.filter(n => n.dataFat && n.dataFat.slice(0,7) === mes);
+  const filtrarPorMes = (lista, mes) => {
+    if (mes === 'all') return lista;
+    return lista.filter(n => {
+      // Inclui a nota se ela tem faturamento ou parcela naquele mês
+      if (n.dataFat && n.dataFat.slice(0,7) === mes) return true;
+      return (n.parcelas||[]).some(p =>
+        (p.vencimento && p.vencimento.slice(0,7) === mes) ||
+        (p.dataPagamento && p.dataPagamento.slice(0,7) === mes)
+      );
+    });
+  };
 
   // ── Chart Fornecedores (com filtro mensal) ────────────────────────────────
   const fornMapFilt={};
@@ -3019,25 +3031,26 @@ function renderDashboard() {
       const sit = String(p.situacao||'').toUpperCase();
       if(sit !== 'PAGO') return;
       if(!p.vencimento || !p.dataPagamento) return;
-      const venc = new Date(p.vencimento);   venc.setHours(0,0,0,0);
-      const pag  = new Date(p.dataPagamento);pag.setHours(0,0,0,0);
+      // Normaliza data para garantir parse correto (formato yyyy-MM-dd do GAS)
+      const vencStr = p.vencimento.slice(0,10);
+      const pagStr  = p.dataPagamento.slice(0,10);
+      const venc = new Date(vencStr + 'T00:00:00');
+      const pag  = new Date(pagStr  + 'T00:00:00');
       if(isNaN(venc) || isNaN(pag)) return;
       const diasAtraso = Math.floor((pag - venc) / (1000*60*60*24));
-      const mes = p.dataPagamento.slice(0,7);
+      const mes = pagStr.slice(0,7);
       parcelasPagas.push({ diasAtraso, mes, valor: parseMoney(p.valor) });
     });
   });
 
-  // Média geral
-  const mediaGeral = parcelasPagas.length
-    ? Math.round(parcelasPagas.reduce((s,x)=>s+Math.max(0,x.diasAtraso),0) / parcelasPagas.length)
-    : 0;
-
-  // % pagas em dia (diasAtraso <= 0)
-  const pagas = parcelasPagas.length;
-  const pagasNoDia = parcelasPagas.filter(x=>x.diasAtraso<=0).length;
-  const pctDia = pagas ? Math.round((pagasNoDia/pagas)*100) : 0;
-  const pctAtraso = 100 - pctDia;
+  // Média geral (só atrasos positivos)
+  const pagas        = parcelasPagas.length;
+  const pagasNoDia   = parcelasPagas.filter(x=>x.diasAtraso<=0).length;
+  const pagasAtraso  = pagas - pagasNoDia;
+  const somaAtraso   = parcelasPagas.filter(x=>x.diasAtraso>0).reduce((s,x)=>s+x.diasAtraso,0);
+  const mediaGeral   = pagasAtraso>0 ? Math.round(somaAtraso/pagasAtraso) : 0;
+  const pctDia       = pagas ? Math.round((pagasNoDia/pagas)*100) : 0;
+  const pctAtraso    = 100 - pctDia;
 
   // Média por mês — últimos 6 meses
   const mediaMesMap = {};
@@ -3053,26 +3066,38 @@ function renderDashboard() {
   });
   const mediaMeses = ultimosMeses.map(m=>Math.round(mediaMesMap[m].soma/mediaMesMap[m].count));
 
-  document.getElementById('kpiTempoPag').innerHTML = `
-    <div class="kpi ${mediaGeral>10?'red':mediaGeral>3?'yellow':'green'}">
-      <div class="kpi-label">⏱️ Tempo Médio de Pagamento</div>
-      <div class="kpi-value">${pagas?mediaGeral+'d':'—'}</div>
-      <div class="kpi-sub">média de dias após vencimento · ${pagas} parcelas pagas</div>
-    </div>
-    <div class="kpi ${pctDia>=80?'green':pctDia>=50?'yellow':'red'}">
-      <div class="kpi-label">✅ Pagas no Prazo</div>
-      <div class="kpi-value">${pagas?pctDia+'%':'—'}</div>
-      <div class="kpi-sub">${pagasNoDia} de ${pagas} parcelas · ${pctAtraso}% com atraso</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">📊 Evolução Mensal (dias)</div>
-      <div class="kpi-value" style="font-size:13px;line-height:1.4">${
-        ultimosMeses.length
-          ? ultimosMeses.map((m,i)=>`<span style="font-size:11px;color:var(--muted)">${labelMeses[i]}</span> <strong style="color:${mediaMeses[i]>10?'#dc2626':mediaMeses[i]>3?'#d97706':'#16a34a'}">${mediaMeses[i]}d</strong>`).join(' &nbsp;')
-          : '—'
-      }</div>
-      <div class="kpi-sub">média de dias em atraso por mês</div>
-    </div>`;
+  const kpiTempoPagEl = document.getElementById('kpiTempoPag');
+  if (!kpiTempoPagEl) return;
+  if (!pagas) {
+    kpiTempoPagEl.innerHTML = `
+      <div class="kpi" style="grid-column:span 3;text-align:center;color:var(--muted);font-size:13px">
+        ⏳ Nenhuma parcela paga registrada ainda — o KPI de tempo médio aparecerá aqui quando houver baixas.
+      </div>`;
+  } else {
+    kpiTempoPagEl.innerHTML = `
+      <div class="kpi ${mediaGeral===0?'green':mediaGeral<=7?'yellow':'red'}">
+        <div class="kpi-label">⏱️ Atraso Médio de Pagamento</div>
+        <div class="kpi-value">${mediaGeral===0?'Em dia':mediaGeral+'d'}</div>
+        <div class="kpi-sub">${pagasAtraso} parcela(s) pagas com atraso · média entre as atrasadas</div>
+      </div>
+      <div class="kpi ${pctDia>=80?'green':pctDia>=50?'yellow':'red'}">
+        <div class="kpi-label">✅ Pagas no Prazo</div>
+        <div class="kpi-value">${pctDia}%</div>
+        <div class="kpi-sub">${pagasNoDia} em dia / ${pagasAtraso} atrasadas · ${pagas} total</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">📅 Atraso por Mês (últimos 6)</div>
+        <div class="kpi-value" style="font-size:12px;font-weight:600;line-height:1.8;letter-spacing:0">${
+          ultimosMeses.length
+            ? ultimosMeses.map((m,i)=>`
+                <span style="font-size:10px;color:var(--muted)">${labelMeses[i]}</span>
+                <strong style="color:${mediaMeses[i]===0?'#16a34a':mediaMeses[i]<=7?'#d97706':'#dc2626'}">${mediaMeses[i]===0?'✓':mediaMeses[i]+'d'}</strong>
+              `).join('&nbsp; ')
+            : '<span style="color:var(--muted);font-size:13px">Sem dados mensais</span>'
+        }</div>
+        <div class="kpi-sub">dias médios de atraso por mês de pagamento</div>
+      </div>`;
+  }
 
   // ── KPI Multas/Juros por Fornecedor ─────────────────────────────────────────
   // FONTE ÚNICA: aba ACRESCIMOS do GAS (só tem dados quando juros/multa > 0)
