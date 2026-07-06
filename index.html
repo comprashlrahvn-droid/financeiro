@@ -2893,221 +2893,216 @@ async function excluirUsuarioUI(id) {
 // ====================================================
 let charts={};
 function renderDashboard() {
-  if (!currentUser || currentUser.role !== 'admin') return; // dashboard restrito a administradores
-  const yr=document.getElementById('dashYear').value;
-  const filtered=yr==='all'?notas:notas.filter(n=>n.ano===yr);
-  const now=new Date();now.setHours(0,0,0,0);
-  const em15=new Date(now);em15.setDate(em15.getDate()+15);
+  if (!currentUser || currentUser.role !== 'admin') return;
 
-  let totalValor=0,totalPago=0,totalVencido=0,totalProximo=0,totalJuros=0,totalMulta=0,countVenc=0,countPago=0,countAvencer=0,countProximo=0;
+  const yr       = document.getElementById('dashYear')?.value || 'all';
+  const filtered = yr === 'all' ? notas : notas.filter(n => n.ano === yr);
+  const now      = new Date(); now.setHours(0,0,0,0);
+  const em15     = new Date(now); em15.setDate(em15.getDate()+15);
+
+  // ── Totalizadores ──────────────────────────────────────────────────────────
+  let totalValor=0,totalPago=0,totalVencido=0,totalProximo=0;
+  let countPago=0,countVenc=0,countAvencer=0,countProximo=0;
   const parcelaVencidas=[],parcelaProximas=[];
 
   filtered.forEach(nf=>{
-    totalValor+=parseMoney(nf.valorTotal);
-    const st=calcStatus(nf);
-    if(st==='PAGO') countPago++;
-    else if(st==='VENCIDA') countVenc++;
+    totalValor += parseMoney(nf.valorTotal);
+    const st = calcStatus(nf);
+    if(st==='PAGO')                    countPago++;
+    else if(st==='VENCIDA')            countVenc++;
     else if(st==='PRÓXIMO VENCIMENTO') countProximo++;
-    else countAvencer++;
-    (nf.parcelas||[]).forEach((p,i)=>{
-      const v=new Date(p.vencimento);v.setHours(0,0,0,0);
-      const pago=String(p.situacao||'').toUpperCase()==='PAGO';
-      const val=parseMoney(p.valor);
-      if(pago){
-        totalPago+=val;
-        totalJuros+=parseMoney(p.juros||0);
-        totalMulta+=parseMoney(p.multa||0);
-      }
-      else if(v<now){totalVencido+=val;parcelaVencidas.push({nf,p,i});}
-      else if(v>=now&&v<=em15){totalProximo+=val;parcelaProximas.push({nf,p,i});}
+    else                               countAvencer++;
+    (nf.parcelas||[]).forEach(p=>{
+      const v   = new Date((p.vencimento||'')+'T00:00:00');
+      const val = parseMoney(p.valor);
+      const sit = String(p.situacao||'').toUpperCase();
+      if(sit==='PAGO') totalPago += val;
+      else if(!isNaN(v) && v<now)       { totalVencido += val;  parcelaVencidas.push({nf,p}); }
+      else if(!isNaN(v) && v<=em15)     { totalProximo += val;  parcelaProximas.push({nf,p}); }
     });
   });
 
-  let countTransito=0, countCartorio=0, countProtestada=0;
+  let countTransito=0,countCartorio=0,countProtestada=0;
   filtered.forEach(n=>{
     const st=calcStatus(n);
     if(st==='TRÂNSITO DE CARTÓRIO') countTransito++;
     else if(st==='EM CARTÓRIO')     countCartorio++;
     else if(st==='PROTESTADA')      countProtestada++;
   });
+
+  // ── KPIs principais ────────────────────────────────────────────────────────
   const kpis=[
-    {label:'Total de NFs',value:filtered.length,sub:`${yr==='all'?'Todos os anos':yr}`,cls:''},
-    {label:'Valor Total',value:fmtMoney(totalValor),sub:'emitido',cls:''},
-    {label:'Pago',value:fmtMoney(totalPago),sub:`${countPago} notas quitadas`,cls:'green'},
-    {label:'Juros Pagos',value:fmtMoney(window._totalJurosGAS||totalJuros),sub:'acumulado de juros',cls:'yellow'},
-    {label:'Multas Pagas',value:fmtMoney(window._totalMultaGAS||totalMulta),sub:'acumulado de multas',cls:'orange'},
-    {label:'Vencidas',value:fmtMoney(totalVencido),sub:`${parcelaVencidas.length} parcelas`,cls:'red'},
-    {label:'Próx. Vencimento',value:fmtMoney(totalProximo),sub:`${parcelaProximas.length} parcelas (≤15 dias)`,cls:'yellow'},
-    {label:'Trânsito de Cartório',value:countTransito,sub:'em trânsito',cls:'orange'},
-    {label:'Em Cartório / Protestada',value:countCartorio+countProtestada,sub:`${countCartorio} cartório · ${countProtestada} protestadas`,cls:'red'},
-    {label:'Aguardando Aprovação',value:filtered.filter(n=>(n.validacao||'').includes('AGUARDANDO')).length,sub:'NFs pendentes',cls:'orange'},
+    {label:'Total de NFs',           value:filtered.length,           sub:`${yr==='all'?'Todos os anos':yr}`,cls:''},
+    {label:'Valor Total Faturado',   value:fmtMoney(totalValor),      sub:'total emitido',cls:''},
+    {label:'Pago',                   value:fmtMoney(totalPago),       sub:`${countPago} notas quitadas`,cls:'green'},
+    {label:'Total Vencido',          value:fmtMoney(totalVencido),    sub:`${parcelaVencidas.length} parcelas`,cls:'red'},
+    {label:'Próx. Vencimento',       value:fmtMoney(totalProximo),    sub:`${parcelaProximas.length} parcelas (≤15 dias)`,cls:'yellow'},
+    {label:'Trânsito de Cartório',   value:countTransito,             sub:'em trânsito',cls:'orange'},
+    {label:'Em Cartório/Protestada', value:countCartorio+countProtestada, sub:`${countCartorio} cartório · ${countProtestada} protestadas`,cls:'red'},
+    {label:'Aguardando Aprovação',   value:filtered.filter(n=>(n.validacao||'').includes('AGUARDANDO')).length,sub:'NFs pendentes',cls:'orange'},
+    {label:'Juros Acumulados',       value:fmtMoney(window._totalJurosGAS||0),sub:'total de juros pagos',cls:'yellow'},
+    {label:'Multas Acumuladas',      value:fmtMoney(window._totalMultaGAS||0),sub:'total de multas pagas',cls:'orange'},
   ];
-  document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
     <div class="kpi ${k.cls}">
       <div class="kpi-label">${k.label}</div>
       <div class="kpi-value">${k.value}</div>
       <div class="kpi-sub">${k.sub}</div>
     </div>`).join('');
 
-  // Charts
-  const statusCounts={PAGO:countPago,VENCIDA:countVenc,'PRÓXIMO VENCIMENTO':countProximo,'A VENCER':countAvencer};
-  renderChart('chartStatus','doughnut',Object.keys(statusCounts),Object.values(statusCounts),['#10b981','#ef4444','#f59e0b','#3b82f6']);
-
-  const contasMapFilt={};
-  filtrarPorMes(filtered, curContas).forEach(n=>{const ct=n.conta||'OUTROS';contasMapFilt[ct]=(contasMapFilt[ct]||0)+parseMoney(n.valorTotal);});
-  const contasSorted=Object.entries(contasMapFilt).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  renderChart('chartContas','bar',contasSorted.map(x=>x[0]),contasSorted.map(x=>x[1]),['#6366f1'],true);
-
-  const mesesMap={};
-  filtered.forEach(nf=>(nf.parcelas||[]).forEach(p=>{
-    if(!p.vencimento) return;
-    // Exclui parcelas já pagas do gráfico de vencimentos
-    const sit = String(p.situacao||'').toUpperCase();
-    if(sit === 'PAGO') return;
-    const d=new Date(p.vencimento);
-    if(isNaN(d)) return;
-    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    mesesMap[key]=(mesesMap[key]||0)+parseMoney(p.valor);
-  }));
-  const mesesSorted=Object.entries(mesesMap).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
-  const mesesLabels=mesesSorted.map(([k])=>{const[y,m]=k.split('-');return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1]}/${y.slice(2)}`});
-  renderChart('chartMeses','line',mesesLabels,mesesSorted.map(x=>x[1]),['#2f7d5e'],true);
-
-  // ── Popular selects de mês — coleta todos meses que aparecem nos dados ──
+  // ── PASSO 1: Popular selects de mês ANTES de usá-los nos charts ──────────
   const mesesSet = new Set();
   filtered.forEach(n => {
-    // Mês de faturamento
     if(n.dataFat && n.dataFat.length>=7) mesesSet.add(n.dataFat.slice(0,7));
-    // Mês de cada parcela (vencimento)
     (n.parcelas||[]).forEach(p => {
-      if(p.vencimento && p.vencimento.length>=7) mesesSet.add(p.vencimento.slice(0,7));
+      if(p.vencimento    && p.vencimento.length>=7)    mesesSet.add(p.vencimento.slice(0,7));
       if(p.dataPagamento && p.dataPagamento.length>=7) mesesSet.add(p.dataPagamento.slice(0,7));
     });
   });
   const mesesDisponiveis = [...mesesSet].filter(m=>/^\d{4}-\d{2}$/.test(m)).sort();
-
   const optsMeses = '<option value="all">Total</option>' +
     mesesDisponiveis.map(m=>{
-      const [y,mo]=m.split('-');
-      const label=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]+'/'+y.slice(2);
+      const [y,mo] = m.split('-');
+      const label  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]+'/'+y.slice(2);
       return `<option value="${m}">${label}</option>`;
     }).join('');
 
-  const selForn  = document.getElementById('filtFornMes');
-  const selContas= document.getElementById('filtContasMes');
-  const curForn  = selForn?.value  || 'all';
-  const curContas= selContas?.value|| 'all';
-  if(selForn)  selForn.innerHTML  = optsMeses;
-  if(selContas)selContas.innerHTML= optsMeses;
-  if(selForn)  selForn.value  = curForn;
-  if(selContas)selContas.value= curContas;
+  // Lê valor atual ANTES de sobrescrever innerHTML
+  const selForn   = document.getElementById('filtFornMes');
+  const selContas = document.getElementById('filtContasMes');
+  const curForn   = selForn?.value   || 'all';
+  const curContas = selContas?.value || 'all';
+  if(selForn)   { selForn.innerHTML   = optsMeses; selForn.value   = curForn;   }
+  if(selContas) { selContas.innerHTML = optsMeses; selContas.value = curContas; }
 
-  // ── Filtrar notas pelo mês selecionado ────────────────────────────────────
+  // ── Filtrar por mês ───────────────────────────────────────────────────────
   const filtrarPorMes = (lista, mes) => {
-    if (mes === 'all') return lista;
+    if(mes === 'all') return lista;
     return lista.filter(n => {
-      // Inclui a nota se ela tem faturamento ou parcela naquele mês
-      if (n.dataFat && n.dataFat.slice(0,7) === mes) return true;
+      if(n.dataFat && n.dataFat.slice(0,7) === mes) return true;
       return (n.parcelas||[]).some(p =>
-        (p.vencimento && p.vencimento.slice(0,7) === mes) ||
+        (p.vencimento    && p.vencimento.slice(0,7)    === mes) ||
         (p.dataPagamento && p.dataPagamento.slice(0,7) === mes)
       );
     });
   };
 
-  // ── Chart Fornecedores (com filtro mensal) ────────────────────────────────
-  const fornMapFilt={};
-  filtrarPorMes(filtered, curForn).forEach(n=>{
-    const f=n.fornecedor||'—';
-    fornMapFilt[f]=(fornMapFilt[f]||0)+parseMoney(n.valorTotal);
+  // ── PASSO 2: Charts (agora curForn e curContas já existem) ───────────────
+  const statusCounts = {PAGO:countPago,VENCIDA:countVenc,'PRÓXIMO VENCIMENTO':countProximo,'A VENCER':countAvencer};
+  renderChart('chartStatus','doughnut',Object.keys(statusCounts),Object.values(statusCounts),['#10b981','#ef4444','#f59e0b','#3b82f6']);
+
+  // Contas Financeiras
+  const contasMapFilt = {};
+  filtrarPorMes(filtered, curContas).forEach(n=>{
+    const ct = n.conta||'OUTROS';
+    contasMapFilt[ct] = (contasMapFilt[ct]||0) + parseMoney(n.valorTotal);
   });
-  const fornTop=Object.entries(fornMapFilt).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const contasSorted = Object.entries(contasMapFilt).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  renderChart('chartContas','bar',contasSorted.map(x=>x[0]),contasSorted.map(x=>x[1]),['#6366f1'],true);
+
+  // Vencimentos por mês
+  const mesesMap = {};
+  filtered.forEach(nf=>(nf.parcelas||[]).forEach(p=>{
+    if(!p.vencimento) return;
+    const sit = String(p.situacao||'').toUpperCase();
+    if(sit==='PAGO') return;
+    const d   = new Date(p.vencimento+'T00:00:00');
+    if(isNaN(d)) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    mesesMap[key] = (mesesMap[key]||0) + parseMoney(p.valor);
+  }));
+  const mesesSorted = Object.entries(mesesMap).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
+  const mesesLabels = mesesSorted.map(([k])=>{
+    const [y,m] = k.split('-');
+    return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1]+'/'+y.slice(2);
+  });
+  renderChart('chartMeses','line',mesesLabels,mesesSorted.map(x=>x[1]),['#2f7d5e'],true);
+
+  // Top Fornecedores
+  const fornMapFilt = {};
+  filtrarPorMes(filtered, curForn).forEach(n=>{
+    const f = n.fornecedor||'—';
+    fornMapFilt[f] = (fornMapFilt[f]||0) + parseMoney(n.valorTotal);
+  });
+  const fornTop = Object.entries(fornMapFilt).sort((a,b)=>b[1]-a[1]).slice(0,10);
   renderChart('chartForn','bar',fornTop.map(x=>x[0]),fornTop.map(x=>x[1]),['#1e6647'],true,true);
 
-  // ── KPI Tempo Médio de Pagamento ──────────────────────────────────────────
+  // ── PASSO 3: KPI Tempo Médio de Pagamento ────────────────────────────────
   const parcelasPagas = [];
   filtered.forEach(nf=>{
     (nf.parcelas||[]).forEach(p=>{
       const sit = String(p.situacao||'').toUpperCase();
-      if(sit !== 'PAGO') return;
+      if(sit!=='PAGO') return;
       if(!p.vencimento || !p.dataPagamento) return;
-      // Normaliza data para garantir parse correto (formato yyyy-MM-dd do GAS)
-      const vencStr = p.vencimento.slice(0,10);
-      const pagStr  = p.dataPagamento.slice(0,10);
-      const venc = new Date(vencStr + 'T00:00:00');
-      const pag  = new Date(pagStr  + 'T00:00:00');
-      if(isNaN(venc) || isNaN(pag)) return;
-      const diasAtraso = Math.floor((pag - venc) / (1000*60*60*24));
-      const mes = pagStr.slice(0,7);
-      parcelasPagas.push({ diasAtraso, mes, valor: parseMoney(p.valor) });
+      const venc = new Date(p.vencimento.slice(0,10)    + 'T00:00:00');
+      const pag  = new Date(p.dataPagamento.slice(0,10) + 'T00:00:00');
+      if(isNaN(venc)||isNaN(pag)) return;
+      const diasAtraso = Math.floor((pag-venc)/(1000*60*60*24));
+      parcelasPagas.push({ diasAtraso, mes: p.dataPagamento.slice(0,7) });
     });
   });
 
-  // Média geral (só atrasos positivos)
-  const pagas        = parcelasPagas.length;
-  const pagasNoDia   = parcelasPagas.filter(x=>x.diasAtraso<=0).length;
-  const pagasAtraso  = pagas - pagasNoDia;
-  const somaAtraso   = parcelasPagas.filter(x=>x.diasAtraso>0).reduce((s,x)=>s+x.diasAtraso,0);
-  const mediaGeral   = pagasAtraso>0 ? Math.round(somaAtraso/pagasAtraso) : 0;
-  const pctDia       = pagas ? Math.round((pagasNoDia/pagas)*100) : 0;
-  const pctAtraso    = 100 - pctDia;
+  const pagas       = parcelasPagas.length;
+  const pagasNoDia  = parcelasPagas.filter(x=>x.diasAtraso<=0).length;
+  const pagasAtraso = pagas - pagasNoDia;
+  const somaAtraso  = parcelasPagas.filter(x=>x.diasAtraso>0).reduce((s,x)=>s+x.diasAtraso,0);
+  const mediaGeral  = pagasAtraso>0 ? Math.round(somaAtraso/pagasAtraso) : 0;
+  const pctDia      = pagas ? Math.round((pagasNoDia/pagas)*100) : 0;
+  const pctAtraso   = 100 - pctDia;
 
-  // Média por mês — últimos 6 meses
+  // Evolução mensal — últimos 6 meses
   const mediaMesMap = {};
   parcelasPagas.forEach(x=>{
     if(!mediaMesMap[x.mes]) mediaMesMap[x.mes]={soma:0,count:0};
-    mediaMesMap[x.mes].soma  += Math.max(0, x.diasAtraso);
+    mediaMesMap[x.mes].soma  += Math.max(0,x.diasAtraso);
     mediaMesMap[x.mes].count += 1;
   });
   const ultimosMeses = Object.keys(mediaMesMap).sort().slice(-6);
   const labelMeses   = ultimosMeses.map(m=>{
-    const [y,mo]=m.split('-');
+    const [y,mo] = m.split('-');
     return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]+'/'+y.slice(2);
   });
   const mediaMeses = ultimosMeses.map(m=>Math.round(mediaMesMap[m].soma/mediaMesMap[m].count));
 
-  const kpiTempoPagEl = document.getElementById('kpiTempoPag');
-  if (!kpiTempoPagEl) return;
-  if (!pagas) {
-    kpiTempoPagEl.innerHTML = `
-      <div class="kpi" style="grid-column:span 3;text-align:center;color:var(--muted);font-size:13px">
-        ⏳ Nenhuma parcela paga registrada ainda — o KPI de tempo médio aparecerá aqui quando houver baixas.
+  const kpiTEl = document.getElementById('kpiTempoPag');
+  if(kpiTEl) {
+    if(!pagas) {
+      kpiTEl.innerHTML = `<div class="kpi" style="grid-column:span 3;text-align:center;color:var(--muted);font-size:13px;padding:24px">
+        ⏳ Nenhuma parcela paga registrada — o KPI aparecerá quando houver baixas.
       </div>`;
-  } else {
-    kpiTempoPagEl.innerHTML = `
-      <div class="kpi ${mediaGeral===0?'green':mediaGeral<=7?'yellow':'red'}">
-        <div class="kpi-label">⏱️ Atraso Médio de Pagamento</div>
-        <div class="kpi-value">${mediaGeral===0?'Em dia':mediaGeral+'d'}</div>
-        <div class="kpi-sub">${pagasAtraso} parcela(s) pagas com atraso · média entre as atrasadas</div>
-      </div>
-      <div class="kpi ${pctDia>=80?'green':pctDia>=50?'yellow':'red'}">
-        <div class="kpi-label">✅ Pagas no Prazo</div>
-        <div class="kpi-value">${pctDia}%</div>
-        <div class="kpi-sub">${pagasNoDia} em dia / ${pagasAtraso} atrasadas · ${pagas} total</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">📅 Atraso por Mês (últimos 6)</div>
-        <div class="kpi-value" style="font-size:12px;font-weight:600;line-height:1.8;letter-spacing:0">${
-          ultimosMeses.length
-            ? ultimosMeses.map((m,i)=>`
-                <span style="font-size:10px;color:var(--muted)">${labelMeses[i]}</span>
-                <strong style="color:${mediaMeses[i]===0?'#16a34a':mediaMeses[i]<=7?'#d97706':'#dc2626'}">${mediaMeses[i]===0?'✓':mediaMeses[i]+'d'}</strong>
-              `).join('&nbsp; ')
-            : '<span style="color:var(--muted);font-size:13px">Sem dados mensais</span>'
-        }</div>
-        <div class="kpi-sub">dias médios de atraso por mês de pagamento</div>
-      </div>`;
+    } else {
+      kpiTEl.innerHTML = `
+        <div class="kpi ${mediaGeral===0?'green':mediaGeral<=7?'yellow':'red'}">
+          <div class="kpi-label">⏱️ Atraso Médio de Pagamento</div>
+          <div class="kpi-value">${mediaGeral===0?'Em dia':mediaGeral+'d'}</div>
+          <div class="kpi-sub">${pagasAtraso} parcelas pagas com atraso · ${pagas} total pago</div>
+        </div>
+        <div class="kpi ${pctDia>=80?'green':pctDia>=50?'yellow':'red'}">
+          <div class="kpi-label">✅ Pagas no Prazo</div>
+          <div class="kpi-value">${pctDia}%</div>
+          <div class="kpi-sub">${pagasNoDia} em dia · ${pagasAtraso} com atraso · ${pagas} total</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">📅 Atraso por Mês (últimos 6)</div>
+          <div class="kpi-value" style="font-size:13px;font-weight:600;line-height:2">${
+            ultimosMeses.length
+              ? ultimosMeses.map((m,i)=>`<span style="font-size:10px;color:var(--muted)">${labelMeses[i]}</span> <strong style="color:${mediaMeses[i]===0?'#16a34a':mediaMeses[i]<=7?'#d97706':'#dc2626'}">${mediaMeses[i]===0?'✓':mediaMeses[i]+'d'}</strong>`).join(' &nbsp; ')
+              : '<span style="color:var(--muted)">Sem dados</span>'
+          }</div>
+          <div class="kpi-sub">dias médios de atraso por mês de pagamento</div>
+        </div>`;
+    }
   }
 
-  // ── KPI Multas/Juros por Fornecedor ─────────────────────────────────────────
-  // FONTE ÚNICA: aba ACRESCIMOS do GAS (só tem dados quando juros/multa > 0)
-  const acrescMap={};
+  // ── PASSO 4: KPI Acréscimos por fornecedor ───────────────────────────────
+  const acrescMap = {};
   if(window._acrescimosGAS && window._acrescimosGAS.length){
     window._acrescimosGAS.forEach(r=>{
-      const fn=String(r.fornecedor||'').trim()||'—';
-      const j=parseMoney(r.juros||0), m=parseMoney(r.multa||0);
-      const tot=parseMoney(r.total||0)||(j+m);
-      if(tot<=0) return; // ignora registros sem acréscimo real
+      const fn  = String(r.fornecedor||'').trim()||'—';
+      const j   = parseMoney(r.juros||0);
+      const m   = parseMoney(r.multa||0);
+      const tot = parseMoney(r.total||0)||(j+m);
+      if(tot<=0) return;
       if(!acrescMap[fn]) acrescMap[fn]={juros:0,multa:0,total:0,count:0};
       acrescMap[fn].juros  += j;
       acrescMap[fn].multa  += m;
@@ -3115,877 +3110,34 @@ function renderDashboard() {
       acrescMap[fn].count  += 1;
     });
   }
-  const acrescTop=Object.entries(acrescMap)
+  const acrescTop = Object.entries(acrescMap)
     .filter(([,v])=>v.total>0)
     .sort((a,b)=>b[1].total-a[1].total)
     .slice(0,10);
   renderKpiAcrescimos(acrescTop);
 
-  // Coleta parcelas em trânsito/cartório/protestadas para alertas
-  const parcelasCartorio=[];
-  filtered.forEach(nf=>{
-    (nf.parcelas||[]).forEach((p,i)=>{
-      const sit=String(p.situacao||'').toUpperCase();
-      if(sit==='TRÂNSITO DE CARTÓRIO'||sit==='EM CARTÓRIO'||sit==='PROTESTADA'){
-        parcelasCartorio.push({nf,p,idx:i+1,sit});
-      }
-    });
-  });
-
-  // Alertas
-  const alertSec=document.getElementById('alertasSection');
-  let alertHTML='';
-  if(parcelaVencidas.length){
-    alertHTML+=`<div class="alert-section">
-      <div class="alert-header red">🔴 VENCIDAS — ${parcelaVencidas.length} parcelas · ${fmtMoney(totalVencido)}</div>
-      <div class="alert-table" style="overflow-x:auto">
-      <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Ação</th></tr></thead>
-      <tbody>${parcelaVencidas.slice(0,20).map(({nf,p,i})=>`<tr>
-        <td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${i+1}</td>
-        <td style="color:#fca5a5">${fmtDate(p.vencimento)}</td>
-        <td>${fmtMoney(parseMoney(p.valor))}</td>
-        <td><button class="btn btn-success btn-sm" onclick="abrirBaixar('${nf.id}',${i})">💰 Baixar</button></td>
-      </tr>`).join('')}</tbody></table></div></div>`;
-  }
-  if(parcelaProximas.length){
-    alertHTML+=`<div class="alert-section">
-      <div class="alert-header yellow">🟡 PRÓXIMO VENCIMENTO — ${parcelaProximas.length} parcelas · ${fmtMoney(totalProximo)}</div>
-      <div class="alert-table" style="overflow-x:auto">
-      <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Ação</th></tr></thead>
-      <tbody>${parcelaProximas.map(({nf,p,i})=>`<tr>
-        <td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${i+1}</td>
-        <td style="color:#92400e;font-weight:600">${fmtDate(p.vencimento)}</td>
-        <td>${fmtMoney(parseMoney(p.valor))}</td>
-        <td><button class="btn btn-success btn-sm" onclick="abrirBaixar('${nf.id}',${i})">💰 Baixar</button></td>
-      </tr>`).join('')}</tbody></table></div></div>`;
-  }
-  if(parcelasCartorio.length){
-    const bgMap={'TRÂNSITO DE CARTÓRIO':'#7c3aed','EM CARTÓRIO':'#ea580c','PROTESTADA':'#dc2626'};
-    const icons={'TRÂNSITO DE CARTÓRIO':'⚖️','EM CARTÓRIO':'🏛️','PROTESTADA':'🚨'};
-    alertHTML+=`<div class="alert-section">
-      <div class="alert-header" style="background:#7c3aed;color:#fff">⚖️ CARTÓRIO / PROTESTADAS — ${parcelasCartorio.length} parcelas</div>
-      <div class="alert-table" style="overflow-x:auto">
-      <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead>
-      <tbody>${parcelasCartorio.map(({nf,p,idx,sit})=>`<tr>
-        <td>#${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td>
-        <td>${fmtDate(p.vencimento)}</td>
-        <td>${fmtMoney(parseMoney(p.valor))}</td>
-        <td>${statusBadge(p.situacao)}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${nf.id}',${idx-1})">✏️ Editar</button></td>
-      </tr>`).join('')}</tbody></table></div></div>`;
-  }
-
-  alertSec.innerHTML=alertHTML;
-}
-
-function renderKpiAcrescimos(lista) {
-  const el = document.getElementById('kpiAcrescimos');
-  if (!el) return;
-  if (!lista.length) {
-    el.innerHTML = `<div style="text-align:center;padding:32px 24px">
-      <div style="font-size:32px;margin-bottom:8px">✅</div>
-      <div style="font-weight:700;color:var(--accent);margin-bottom:4px">Sem acréscimos registrados</div>
-      <div style="font-size:12px;color:var(--muted)">Nenhum pagamento com juros ou multa foi registrado ainda.<br>Os dados aparecerão aqui quando houver baixas com acréscimos (coluna Juros/Multa preenchida).</div>
-    </div>`;
-    return;
-  }
-  const max = lista[0][1].total;
-  el.innerHTML = `
-    <div style="overflow-x:auto">
-    <table class="tbl">
-      <thead><tr>
-        <th>#</th><th>Fornecedor</th>
-        <th class="right">Juros</th><th class="right">Multa</th>
-        <th class="right">Total Acréscimos</th>
-        <th>Proporção</th>
-      </tr></thead>
-      <tbody>
-        ${lista.map(([fn,v],i)=>{
-          const pct = max>0 ? Math.round((v.total/max)*100) : 0;
-          const bar = `<div style="background:#fee2e2;border-radius:6px;height:10px;width:100%;overflow:hidden"><div style="background:linear-gradient(90deg,#dc2626,#ef4444);height:10px;width:${pct}%;border-radius:6px;transition:width .6s ease"></div></div>`;
-          const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700;font-family:monospace">#${i+1}</span>`;
-          const nomeForn = fn && fn!=='—' ? fn : '<em style="color:var(--muted)">—</em>';
-          return `<tr>
-            <td style="width:40px;text-align:center">${rank}</td>
-            <td><strong>${nomeForn}</strong><br><span style="font-size:11px;color:var(--muted)">${v.count} baixa(s) com acréscimo</span></td>
-            <td style="text-align:right;color:#b45309;font-family:monospace;font-weight:600">${fmtMoney(v.juros||0)}</td>
-            <td style="text-align:right;color:#b91c1c;font-family:monospace;font-weight:600">${fmtMoney(v.multa||0)}</td>
-            <td style="text-align:right;font-weight:800;color:#991b1b;font-family:monospace;font-size:14px">${fmtMoney(v.total)}</td>
-            <td style="min-width:140px;padding-right:8px">${bar}<div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px">${pct}%</div></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-      <tfoot><tr>
-        <td colspan="4" style="text-align:right;font-weight:700;color:var(--muted)">TOTAL ACRÉSCIMOS:</td>
-        <td style="text-align:right;font-weight:800;color:#b91c1c;font-family:monospace">
-          ${fmtMoney(lista.reduce((s,[,v])=>s+v.total,0))}
-        </td>
-        <td></td>
-      </tr></tfoot>
-    </table></div>`;
-}
-
-function renderChart(id,type,labels,data,colors,yMoney=false,horizontal=false){
-  if(charts[id]) charts[id].destroy();
-  const ctx=document.getElementById(id);
-  if(!ctx) return;
-  const isDoughnut=type==='doughnut';
-  const isLine=type==='line';
-  charts[id]=new Chart(ctx,{
-    type:horizontal?'bar':type,
-    data:{labels,datasets:[{
-      data,
-      backgroundColor:isDoughnut?colors:colors[0]+'40',
-      borderColor:isDoughnut?'transparent':colors[0],
-      fill:isLine,
-      tension:.4,
-      borderWidth:isLine?2.5:0,
-      pointRadius:isLine?4:0,
-      pointBackgroundColor:isLine?colors[0]:undefined
-    }]},
-    options:{
-      indexAxis:horizontal?'y':'x',
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:isDoughnut,position:'right',labels:{color:'#aab8d1',font:{size:11},padding:12,boxWidth:12}},
-        tooltip:{callbacks:{label:ctx=>{
-          const v=ctx.raw;
-          return yMoney||isLine?fmtMoney(v):(isDoughnut?ctx.label+': '+v:fmtMoney(v));
-        }}}
-      },
-      scales:isDoughnut?{}:{
-        x:{ticks:{color:'#64748b',font:{size:10},maxRotation:45},grid:{color:'#1e2b25'}},
-        y:{ticks:{color:'#64748b',font:{size:10},callback:v=>yMoney||isLine?fmtMoney(v):v},grid:{color:'#1e2b25'}}
-      }
-    }
-  });
-}
-
-// ====================================================
-// EXPORT
-// ====================================================
-function exportXLS() {
-  const data=filteredNotas.length?filteredNotas:notas;
-  const rows=data.map(n=>{
-    const st=calcStatus(n);
-    const base={Nº_NF:n.numero,Data_Faturamento:fmtDate(n.dataFat),Fornecedor:n.fornecedor,CNPJ:n.cnpj,Valor_Total:parseMoney(n.valorTotal),Num_Parcelas:n.numParcelas,Conta:n.conta,Ano:n.ano,Validacao:n.validacao,Status:st};
-    (n.parcelas||[]).forEach((p,i)=>{base[`P${i+1}_Venc`]=fmtDate(p.vencimento);base[`P${i+1}_Valor`]=parseMoney(p.valor);base[`P${i+1}_Sit`]=p.situacao;base[`P${i+1}_DataPag`]=p.dataPagamento?fmtDate(p.dataPagamento):'';base[`P${i+1}_ValPago`]=p.valorPago?parseMoney(p.valorPago):'';});
-    return base;
-  });
-  const ws=XLSX.utils.json_to_sheet(rows);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Notas Fiscais');
-  XLSX.writeFile(wb,`NFs_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
-}
-
-function exportPDF() {
-  const data=filteredNotas.length?filteredNotas:notas;
-  const html=buildPDFHTML('Relatório de Notas Fiscais',data);
-  const w=window.open('','_blank');
-  w.document.write(html);w.document.close();w.print();
-}
-
-function buildPDFHTML(titulo,data) {
-  const rows=data.map(n=>{
-    const st=calcStatus(n);
-    return `<tr><td>${n.numero}</td><td>${fmtDate(n.dataFat)}</td><td>${n.fornecedor}</td><td>${fmtMoney(parseMoney(n.valorTotal))}</td><td>${n.conta}</td><td>${n.validacao}</td><td>${st}</td></tr>`;
-  }).join('');
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulo}</title>
-  <style>body{font-family:Arial;font-size:12px;color:#000}h1{font-size:16px;margin-bottom:8px}p{font-size:11px;color:#666;margin-bottom:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f0f0f0;font-weight:bold}tr:nth-child(even){background:#f9f9f9}@media print{body{margin:0}}</style>
-  </head><body><h1>${titulo}</h1><p>Gerado em ${new Date().toLocaleString('pt-BR')} | Total: ${data.length} notas</p>
-  <table><thead><tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Validação</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
-<!-- MODAL EDITAR PARCELA -->
-<div class="modal-overlay" id="modalEditarParcela">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-header">
-      <div class="modal-title" id="editarParcelaTitle">Editar Parcela</div>
-      <button class="modal-close" onclick="closeModal('modalEditarParcela')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="editarParcelaInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Nova Data de Vencimento</label>
-          <input type="date" id="epVencimento">
-        </div>
-        <div class="form-group">
-          <label>Status da Parcela</label>
-          <select id="epStatus">
-            <option value="A VENCER">A Vencer</option>
-            <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
-            <option value="VENCIDA">Vencida</option>
-            <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
-            <option value="EM CARTÓRIO">Em Cartório</option>
-            <option value="PROTESTADA">Protestada</option>
-            <option value="PAGO">Pago</option>
-          </select>
-        </div>
-      </div>
-      <div id="epCartorioInfo" style="display:none" class="notice notice-warn">
-        ⚖️ Ao marcar como <strong>Em Cartório</strong> ou <strong>Protestada</strong>, o sistema registra que esta parcela foi encaminhada/efetivada no cartório. Informe a nova data de vencimento conforme intimação recebida.
-      </div>
-      <div class="form-group" style="margin-top:8px">
-        <label>Observação</label>
-        <input type="text" id="epObs" placeholder="Ex: Notificação recebida em 10/06/2026, prazo até 20/06">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalEditarParcela')">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarEditarParcela()">💾 Salvar alteração</button>
-    </div>
-  </div>
-</div>
-</body></html>`;
-}
-
-// RELATÓRIOS
-function _getTipoFornecedor() {
-  // Lê o select do card unificado e retorna o tipo e filtros corretos
-  const sel = document.getElementById('relFornTipo')?.value || 'fornecedor';
-  // Sincroniza o select de fornecedor antigo (relFornecedor) — já existe
-  return sel; // 'fornecedor' | 'vencidosFornecedor_vencidas' | 'vencidosFornecedor_todos'
-}
-
-function gerarRelatorioFornecedorAdaptado() {
-  const sel = _getTipoFornecedor();
-  if (sel === 'fornecedor') {
-    gerarRelatorio('fornecedor');
-  } else {
-    // Injeta temporariamente o modo no getRelatorioData via globals
-    window._relVencFornModo = sel === 'vencidosFornecedor_todos' ? 'todos' : 'vencidas';
-    gerarRelatorio('vencidosFornecedor');
-    window._relVencFornModo = null;
-  }
-}
-function gerarRelatorioFornecedorAdaptadoXLS() {
-  const sel = _getTipoFornecedor();
-  if (sel === 'fornecedor') { gerarRelatorioXLS('fornecedor'); return; }
-  window._relVencFornModo = sel === 'vencidosFornecedor_todos' ? 'todos' : 'vencidas';
-  gerarRelatorioXLS('vencidosFornecedor');
-  window._relVencFornModo = null;
-}
-function gerarRelatorioFornecedorAdaptadoPDF() {
-  const sel = _getTipoFornecedor();
-  if (sel === 'fornecedor') { gerarRelatorioPDF('fornecedor'); return; }
-  window._relVencFornModo = sel === 'vencidosFornecedor_todos' ? 'todos' : 'vencidas';
-  gerarRelatorioPDF('vencidosFornecedor');
-  window._relVencFornModo = null;
-}
-
-function getRelatorioData(tipo) {
-  const now=new Date();now.setHours(0,0,0,0);
-  const em15=new Date(now);em15.setDate(em15.getDate()+15);
-  if(tipo==='vencidas'){
-    const rows=[];
-    notas.forEach(nf=>(nf.parcelas||[]).forEach((p,i)=>{
-      const v=new Date(p.vencimento);v.setHours(0,0,0,0);
-      const sit=String(p.situacao||'').toUpperCase();
-      if(v<now && sit!=='PAGO'){
-        const diasVencido=Math.floor((now-v)/(1000*60*60*24));
-        rows.push({nf,p,idx:i+1,diasVencido});
-      }
-    }));
-    return rows.sort((a,b)=>b.diasVencido-a.diasVencido); // mais atrasados primeiro
-  }
-  if(tipo==='proximos'){
-    const rows=[];
-    notas.forEach(nf=>(nf.parcelas||[]).forEach((p,i)=>{
-      const v=new Date(p.vencimento);v.setHours(0,0,0,0);
-      if(v>=now&&v<=em15&&p.situacao!=='PAGO') rows.push({nf,p,idx:i+1});
-    }));
-    return rows.sort((a,b)=>new Date(a.p.vencimento)-new Date(b.p.vencimento));
-  }
-  if(tipo==='periodo'){
-    const de=document.getElementById('relDe').value;
-    const ate=document.getElementById('relAte').value;
-    return notas.filter(n=>{
-      if(!n.dataFat) return false;
-      const d=n.dataFat.slice(0,10);
-      if(de&&d<de) return false;
-      if(ate&&d>ate) return false;
-      return true;
-    });
-  }
-  if(tipo==='vencPeriodo'){
-    const de=document.getElementById('relVencDe').value;
-    const ate=document.getElementById('relVencAte').value;
-    const st=(document.getElementById('relVencStatus').value||'').toUpperCase();
-    const rows=[];
-    notas.forEach(nf=>(nf.parcelas||[]).forEach((p,i)=>{
-      if(!p.vencimento) return;
-      const v=p.vencimento.slice(0,10);
-      if(de&&v<de) return;
-      if(ate&&v>ate) return;
-      if(st && String(p.situacao||'').toUpperCase()!==st) return;
-      rows.push({nf,p,idx:i+1});
-    }));
-    return rows.sort((a,b)=>a.p.vencimento.localeCompare(b.p.vencimento));
-  }
-  if(tipo==='cartorio'){
-    const filtSit=(document.getElementById('relCartorioStatus').value||'').toUpperCase();
-    const rows=[];
-    notas.forEach(nf=>(nf.parcelas||[]).forEach((p,i)=>{
-      const sit=String(p.situacao||'').toUpperCase();
-      const isCartorio = sit==='TRÂNSITO DE CARTÓRIO'||sit==='EM CARTÓRIO'||sit==='PROTESTADA';
-      if(!isCartorio) return;
-      if(filtSit && sit!==filtSit) return;
-      rows.push({nf,p,idx:i+1});
-    }));
-    return rows.sort((a,b)=>String(a.p.situacao).localeCompare(String(b.p.situacao)));
-  }
-  if(tipo==='fornecedor'){
-    const fn=document.getElementById('relFornecedor').value;
-    return notas.filter(n=>!fn||n.fornecedor===fn);
-  }
-  if(tipo==='vencidosFornecedor'){
-    // Filtro de fornecedor vem do select unificado
-    const fn   = document.getElementById('relFornecedor')?.value||'';
-    const modo = window._relVencFornModo || 'vencidas';
-    const now    = new Date(); now.setHours(0,0,0,0);
-    // Coleta parcelas vencidas/cartório agrupadas por fornecedor — com detalhe individual
-    const mapa   = {}; // { fornecedor: { parcelas:[{nf,p,idx,diasVencido}], totalVencido, qtdParcelas, nfs:Set } }
-    notas.forEach(nf=>{
-      if(fn && nf.fornecedor!==fn) return;
-      (nf.parcelas||[]).forEach((p,i)=>{
-        const sit = String(p.situacao||'').toUpperCase().trim();
-        if(sit==='PAGO') return;
-        const venc = p.vencimento ? new Date(p.vencimento) : null;
-        if(!venc) return;
-        venc.setHours(0,0,0,0);
-        const isVencida   = venc < now;
-        const isCartorio  = ['EM CARTÓRIO','TRÂNSITO DE CARTÓRIO','PROTESTADA'].includes(sit);
-        const incluir = modo==='todos' ? (isVencida||isCartorio) : isVencida;
-        if(!incluir) return;
-        const diasVencido = isVencida ? Math.floor((now-venc)/(1000*60*60*24)) : 0;
-        const f = nf.fornecedor||'—';
-        if(!mapa[f]) mapa[f]={parcelas:[],totalVencido:0,qtdParcelas:0,nfs:new Set()};
-        mapa[f].parcelas.push({nf,p,idx:i+1,diasVencido});
-        mapa[f].totalVencido += parseMoney(p.valor);
-        mapa[f].qtdParcelas++;
-        mapa[f].nfs.add(nf.numero);
-      });
-    });
-    // Ordena parcelas de cada fornecedor por dias de atraso (mais antigo primeiro)
-    Object.values(mapa).forEach(v=>v.parcelas.sort((a,b)=>b.diasVencido-a.diasVencido));
-    // Retorna array ordenado por valor vencido desc
-    return Object.entries(mapa)
-      .sort((a,b)=>b[1].totalVencido-a[1].totalVencido)
-      .map(([fornecedor,v])=>({fornecedor, ...v, qtdNFs:v.nfs.size}));
-  }
-  if(tipo==='baixas'){
-    const fn  = document.getElementById('relBaixaFornecedor')?.value||'';
-    const de  = document.getElementById('relBaixaDe')?.value||'';
-    const ate = document.getElementById('relBaixaAte')?.value||'';
-    const rows=[];
-    notas.forEach(nf=>{
-      if(fn && nf.fornecedor!==fn) return;
-      (nf.parcelas||[]).forEach((p,i)=>{
-        const sit=String(p.situacao||'').toUpperCase();
-        if(sit!=='PAGO') return;
-        const dataPag=(p.dataPagamento||'').slice(0,10);
-        if(!dataPag) return;
-        if(de  && dataPag<de)  return;
-        if(ate && dataPag>ate) return;
-        rows.push({nf,p,idx:i+1});
-      });
-    });
-    return rows.sort((a,b)=>(a.p.dataPagamento||'').localeCompare(b.p.dataPagamento||''));
-  }
-  return [];
-}
-
-function gerarRelatorioXLS(tipo) {
-  const data=getRelatorioData(tipo);
-  const titulos={vencidas:'Parcelas Vencidas',proximos:'Próximo Vencimento (15 dias)',periodo:'Por Período de Faturamento',fornecedor:'Por Fornecedor',vencPeriodo:'Vencimentos por Período',cartorio:'Cartório / Protestadas',baixas:'Baixas (Pagamentos Realizados)',vencidosFornecedor:'Vencidos por Fornecedor'};
-  if(!data.length){alert('Nenhum dado para exportar.');return;}
-  let rows;
-  if(tipo==='vencidosFornecedor'){
-    rows = [];
-    data.forEach(d=>{
-      d.parcelas.forEach(({nf,p,idx,diasVencido})=>{
-        rows.push({
-          Fornecedor:       d.fornecedor,
-          Nº_NF:            nf.numero,
-          Data_Faturamento: fmtDate(nf.dataFat),
-          Parcela:          `${idx}/${nf.numParcelas||1}`,
-          Vencimento:       fmtDate(p.vencimento),
-          Dias_Atraso:      diasVencido,
-          Status:           p.situacao||'VENCIDA',
-          Valor_Vencido:    parseMoney(p.valor),
-        });
-      });
-    });
-    const totalGeral = data.reduce((s,d)=>s+d.totalVencido,0);
-    rows.push({Fornecedor:'TOTAL GERAL',Nº_NF:'',Data_Faturamento:'',Parcela:'',Vencimento:'',Dias_Atraso:'',Status:'',Valor_Vencido:totalGeral});
-  } else if(tipo==='baixas'){
-    rows=data.map(({nf,p,idx})=>({
-      Nº_NF:      nf.numero,
-      Fornecedor: nf.fornecedor,
-      CNPJ:       nf.cnpj,
-      Parcela:    idx,
-      Vencimento: fmtDate(p.vencimento),
-      Data_Pagamento: fmtDate(p.dataPagamento),
-      Valor_Original: parseMoney(p.valor),
-      Valor_Pago:     parseMoney(p.valorPago||p.valor),
-      Conta:      nf.conta
-    }));
-    const totalPago=rows.reduce((s,r)=>s+r.Valor_Pago,0);
-    rows.push({Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Data_Pagamento:'',Valor_Original:'',Valor_Pago:totalPago,Conta:''});
-  } else if(tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio'){
-    if(tipo==='vencidas'){
-      rows=data.map(({nf,p,idx,diasVencido})=>({
-        Nº_NF:          nf.numero,
-        Data_Faturamento:fmtDate(nf.dataFat),
-        Fornecedor:     nf.fornecedor,
-        CNPJ:           nf.cnpj,
-        Conta:          nf.conta,
-        Parcela:        `${idx}/${nf.numParcelas||1}`,
-        Vencimento:     fmtDate(p.vencimento),
-        Dias_Vencido:   diasVencido||0,
-        Valor_Vencido:  parseMoney(p.valor),
-        Status:         p.situacao||'VENCIDA',
-      }));
-    } else {
-      rows=data.map(({nf,p,idx})=>({Nº_NF:nf.numero,Fornecedor:nf.fornecedor,CNPJ:nf.cnpj,Parcela:idx,Vencimento:fmtDate(p.vencimento),Valor:parseMoney(p.valor),Situacao:p.situacao,Conta:nf.conta}));
-    }
-    const campoValor = tipo==='vencidas'?'Valor_Vencido':'Valor';
-    const total=rows.reduce((s,r)=>s+(r[campoValor]||0),0);
-    const totalRow = tipo==='vencidas'
-      ? {Nº_NF:'TOTAL',Data_Faturamento:'',Fornecedor:'',CNPJ:'',Conta:'',Parcela:'',Vencimento:'',Dias_Vencido:'',Valor_Vencido:total,Status:''}
-      : {Nº_NF:'TOTAL',Fornecedor:'',CNPJ:'',Parcela:'',Vencimento:'',Valor:total,Situacao:'',Conta:''};
-    rows.push(totalRow);
-  } else {
-    rows=data.map(n=>({Nº_NF:n.numero,Data_Fat:fmtDate(n.dataFat),Fornecedor:n.fornecedor,Valor_Total:parseMoney(n.valorTotal),Conta:n.conta,Status:calcStatus(n),Validacao:n.validacao}));
-    const total=rows.reduce((s,r)=>s+r.Valor_Total,0);
-    rows.push({Nº_NF:'TOTAL',Data_Fat:'',Fornecedor:'',Valor_Total:total,Conta:'',Status:'',Validacao:''});
-  }
-  const ws=XLSX.utils.json_to_sheet(rows);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Relatório');
-  XLSX.writeFile(wb,`Relatorio_${tipo}_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
-}
-
-function gerarRelatorioPDF(tipo) {
-  const data = getRelatorioData(tipo);
-  if (!data.length) { alert('Nenhum dado para exportar.'); return; }
-  const titulos = {
-    vencidas:'Parcelas Vencidas', proximos:'Próximo Vencimento (15 dias)',
-    periodo:'Por Período de Faturamento', fornecedor:'Por Fornecedor',
-    vencPeriodo:'Vencimentos por Período', cartorio:'Cartório / Protestadas',
-    baixas:'Baixas (Pagamentos Realizados)', vencidosFornecedor:'Vencidos por Fornecedor'
-  };
-  const css = `<style>body{font-family:Arial;font-size:11px;color:#000}h1{font-size:14px;margin-bottom:4px}p{font-size:10px;color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#e8e8e8;font-weight:bold}tr:nth-child(even){background:#f9f9f9}tfoot tr{background:#e0f2e9;font-weight:bold}@media print{body{margin:0}}
-/* ── TIPO DE NF ──────────────────────────────────────────────────── */
-.btn-tipo-nf{
-  padding:10px 18px;border-radius:10px;border:2px solid var(--border);
-  background:#fff;color:var(--muted);font-family:var(--font);font-size:13px;
-  font-weight:600;cursor:pointer;transition:all .15s;flex:1;text-align:center;
-}
-.btn-tipo-nf:hover{border-color:var(--accent);color:var(--accent)}
-.btn-tipo-nf.active{border-color:var(--accent);background:var(--accent-pale);color:var(--accent)}
-#btnTipoDevolucao.active{border-color:#d97706;background:#fffbeb;color:#92400e}
-
-/* ── TIPO DE BAIXA ─────────────────────────────────────────────── */
-.btn-tipo-baixa{
-  flex:1;padding:9px 12px;border-radius:10px;border:2px solid var(--border);
-  background:#fff;color:var(--muted);font-family:var(--font);font-size:12px;
-  font-weight:600;cursor:pointer;transition:all .15s;text-align:center;
-}
-.btn-tipo-baixa:hover{border-color:var(--accent);color:var(--accent)}
-#btbPagamento.active{border-color:#16a34a;background:#f0fdf4;color:#15803d}
-#btbCancelado.active{border-color:#dc2626;background:#fef2f2;color:#b91c1c}
-#btbAdm.active{border-color:#d97706;background:#fffbeb;color:#92400e}
-</style>`;
-  const titulo = titulos[tipo] || tipo;
-  let cabecalho = '', rows = '', totalRow = '';
-
-  if (tipo === 'vencidosFornecedor') {
-    const totalGeral = data.reduce((s,d)=>s+d.totalVencido, 0);
-    cabecalho = '<tr><th>Fornecedor</th><th>Nº NF</th><th>Data Fat.</th><th>Vencimento</th><th style="text-align:center">Atraso</th><th>Status</th><th style="text-align:right">Valor</th></tr>';
-    rows = data.map(d=>{
-      const linhaForn = `<tr style="background:#fce8e8"><td colspan="6"><strong>${d.fornecedor}</strong> — ${d.qtdNFs} NF(s), ${d.qtdParcelas} parcela(s)</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(d.totalVencido)}</td></tr>`;
-      const linhasDet = d.parcelas.map(({nf,p,idx,diasVencido})=>
-        `<tr><td></td><td>${nf.numero} (${idx}/${nf.numParcelas||1})</td><td>${fmtDate(nf.dataFat)}</td><td style="color:#b91c1c">${fmtDate(p.vencimento)}</td><td style="text-align:center;color:#b91c1c;font-weight:bold">+${diasVencido}d</td><td>${p.situacao||'VENCIDA'}</td><td style="text-align:right;font-weight:bold">${fmtMoney(parseMoney(p.valor))}</td></tr>`
+  // ── PASSO 5: Alertas vencidas/próximas ───────────────────────────────────
+  const alertSec = document.getElementById('alertasSection');
+  if(alertSec) {
+    let html='';
+    if(parcelaVencidas.length){
+      html+=`<div class="alert-section"><div class="alert-header red">🔴 VENCIDAS — ${parcelaVencidas.length} parcelas · ${fmtMoney(totalVencido)}</div>
+      <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th>Conta</th></tr></thead><tbody>`;
+      html+=parcelaVencidas.slice(0,20).map(({nf,p})=>
+        `<tr><td><strong>#${nf.numero}</strong></td><td>${nf.fornecedor}</td><td style="color:#b91c1c;font-weight:600">${fmtDate(p.vencimento)}</td><td style="font-family:monospace">${fmtMoney(parseMoney(p.valor))}</td><td style="font-size:12px">${nf.conta||'—'}</td></tr>`
       ).join('');
-      return linhaForn + linhasDet;
-    }).join('');
-    totalRow = `<tr><td colspan="6" style="text-align:right;font-weight:bold">TOTAL VENCIDO GERAL:</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(totalGeral)}</td></tr>`;
-  } else if (tipo === 'baixas') {
-    const totalPago = data.reduce((s,{p}) => s + parseMoney(p.valorPago||p.valor), 0);
-    cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Data Pag.</th><th>Valor Pago</th><th>Conta</th></tr>';
-    rows = data.map(({nf,p,idx}) =>
-      `<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td style="color:green;font-weight:bold">${fmtDate(p.dataPagamento)}</td><td>${fmtMoney(parseMoney(p.valorPago||p.valor))}</td><td>${nf.conta||'—'}</td></tr>`
-    ).join('');
-    totalRow = `<tr><td colspan="5" style="text-align:right;font-weight:bold">TOTAL PAGO:</td><td style="font-weight:bold">${fmtMoney(totalPago)}</td><td></td></tr>`;
-  } else if (tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio') {
-    const totalValor = data.reduce((s,{p}) => s + parseMoney(p.valor), 0);
-    if (tipo==='vencidas') {
-      cabecalho = '<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>CNPJ</th><th>Conta</th><th style="text-align:center">Parcela</th><th>Vencimento</th><th style="text-align:center">Atraso</th><th style="text-align:right">Valor Vencido</th><th>Status</th></tr>';
-      rows = data.map(({nf,p,idx,diasVencido}) =>
-        `<tr>
-          <td><strong>${nf.numero}</strong></td>
-          <td>${fmtDate(nf.dataFat)}</td>
-          <td>${nf.fornecedor}</td>
-          <td style="font-size:9px">${nf.cnpj||'—'}</td>
-          <td>${nf.conta||'—'}</td>
-          <td style="text-align:center">${idx}/${nf.numParcelas||1}</td>
-          <td style="color:#b91c1c">${fmtDate(p.vencimento)}</td>
-          <td style="text-align:center;color:#b91c1c;font-weight:bold">+${diasVencido||0}d</td>
-          <td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(parseMoney(p.valor))}</td>
-          <td>${p.situacao||'VENCIDA'}</td>
-        </tr>`
-      ).join('');
-      totalRow = `<tr><td colspan="8" style="text-align:right;font-weight:bold">TOTAL VENCIDO:</td><td style="text-align:right;font-weight:bold;color:#991b1b">${fmtMoney(totalValor)}</td><td></td></tr>`;
-    } else {
-      cabecalho = '<tr><th>NF</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>';
-      rows = data.map(({nf,p,idx}) =>
-        `<tr><td>${nf.numero}</td><td>${nf.fornecedor}</td><td>${idx}</td><td>${fmtDate(p.vencimento)}</td><td>${fmtMoney(parseMoney(p.valor))}</td><td>${nf.conta||'—'}</td><td>${p.situacao||'—'}</td></tr>`
-      ).join('');
-      totalRow = `<tr><td colspan="4" style="text-align:right;font-weight:bold">TOTAL:</td><td style="font-weight:bold">${fmtMoney(totalValor)}</td><td colspan="2"></td></tr>`;
+      if(parcelaVencidas.length>20) html+=`<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:12px">... e mais ${parcelaVencidas.length-20} parcelas</td></tr>`;
+      html+='</tbody></table></div>';
     }
-  } else {
-    const totalValor = data.reduce((s,n) => s + parseMoney(n.valorTotal), 0);
-    cabecalho = '<tr><th>NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Parc.</th><th>Validação</th><th>Status</th></tr>';
-    rows = data.map(n =>
-      `<tr><td>${n.numero}</td><td>${fmtDate(n.dataFat)}</td><td>${n.fornecedor}</td><td>${fmtMoney(parseMoney(n.valorTotal))}</td><td>${n.conta||'—'}</td><td>${n.numParcelas||1}x</td><td>${n.validacao}</td><td>${calcStatus(n)}</td></tr>`
-    ).join('');
-    totalRow = `<tr><td colspan="3" style="text-align:right;font-weight:bold">TOTAL:</td><td style="font-weight:bold">${fmtMoney(totalValor)}</td><td colspan="4"></td></tr>`;
+    if(parcelaProximas.length){
+      html+=`<div class="alert-section" style="margin-top:16px"><div class="alert-header yellow">🟡 PRÓXIMO VENCIMENTO — ${parcelaProximas.length} parcelas · ${fmtMoney(totalProximo)}</div>
+      <table class="tbl"><thead><tr><th>NF</th><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th>Conta</th></tr></thead><tbody>`;
+      html+=parcelaProximas.slice(0,20).map(({nf,p})=>
+        `<tr><td><strong>#${nf.numero}</strong></td><td>${nf.fornecedor}</td><td style="color:#d97706;font-weight:600">${fmtDate(p.vencimento)}</td><td style="font-family:monospace">${fmtMoney(parseMoney(p.valor))}</td><td style="font-size:12px">${nf.conta||'—'}</td></tr>`
+      ).join('');
+      if(parcelaProximas.length>20) html+=`<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:12px">... e mais ${parcelaProximas.length-20} parcelas</td></tr>`;
+      html+='</tbody></table></div>';
+    }
+    alertSec.innerHTML = html;
   }
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulo}</title>${css}</head><body>
-    <h1>🏥 Sistema NF — ${titulo}</h1>
-    <p>Gerado em ${new Date().toLocaleString('pt-BR')} &nbsp;|&nbsp; ${data.length} registro(s)</p>
-    <table><thead>${cabecalho}</thead><tbody>${rows}</tbody><tfoot>${totalRow}</tfoot></table>
-  </body></html>`;
-  const w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
-  w.print();
 }
-
-
-function gerarRelatorio(tipo) {
-  const data = getRelatorioData(tipo);
-  const titulos = {
-    vencidas:'🔴 Parcelas Vencidas', proximos:'🟡 Próximo Vencimento',
-    periodo:'📅 Por Período de Faturamento', fornecedor:'🏢 Por Fornecedor',
-    vencPeriodo:'📆 Vencimentos por Período', cartorio:'⚖️ Cartório / Protestadas',
-    baixas:'💰 Baixas (Pagamentos Realizados)', vencidosFornecedor:'🏢 Vencidos por Fornecedor'
-  };
-  const res = document.getElementById('relResultado');
-  if (!data.length) {
-    res.innerHTML = `<div class="notice notice-info">Nenhum dado encontrado para este filtro.</div>`;
-    return;
-  }
-
-  // ── Caso especial: relatório agrupado por fornecedor ─────────────────────
-  if (tipo === 'vencidosFornecedor') {
-    const totalGeral = data.reduce((s,d)=>s+d.totalVencido, 0);
-    const totalParcelas = data.reduce((s,d)=>s+d.qtdParcelas, 0);
-
-    // Para cada fornecedor: cabeçalho-resumo + linhas detalhadas de cada NF/parcela
-    const blocos = data.map((d,fi)=>{
-      const rank = fi===0?'🥇':fi===1?'🥈':fi===2?'🥉':`#${fi+1}`;
-      const linhasDetalhe = d.parcelas.map(({nf,p,idx,diasVencido})=>`
-        <tr>
-          <td></td>
-          <td style="font-size:12px"><strong style="color:var(--accent)">#${nf.numero}</strong> <span style="color:var(--muted)">— ${idx}/${nf.numParcelas||1}</span></td>
-          <td style="font-size:12px;color:var(--muted)">${fmtDate(nf.dataFat)}</td>
-          <td style="font-size:12px;color:#b91c1c;font-weight:600">${fmtDate(p.vencimento)}</td>
-          <td style="text-align:center">
-            <span style="background:#fee2e2;color:#991b1b;font-weight:700;font-family:monospace;padding:2px 7px;border-radius:20px;font-size:11px">+${diasVencido}d</span>
-          </td>
-          <td style="font-size:12px">${statusBadge(p.situacao||'VENCIDA')}</td>
-          <td style="text-align:right;font-family:monospace;font-weight:700;color:#991b1b">${fmtMoney(parseMoney(p.valor))}</td>
-        </tr>`).join('');
-
-      return `
-        <tr style="background:#fff5f5">
-          <td style="text-align:center;font-weight:800">${rank}</td>
-          <td colspan="4">
-            <strong style="font-size:14px">${d.fornecedor}</strong>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.qtdNFs} NF(s) · ${d.qtdParcelas} parcela(s) vencida(s)</div>
-          </td>
-          <td></td>
-          <td style="text-align:right;font-weight:800;color:#991b1b;font-family:monospace;font-size:15px">${fmtMoney(d.totalVencido)}</td>
-        </tr>
-        ${linhasDetalhe}`;
-    }).join('');
-
-    const thead = `<tr>
-      <th style="width:36px;text-align:center">#</th>
-      <th>Nº NF</th>
-      <th>Data Fat.</th>
-      <th>Vencimento</th>
-      <th style="text-align:center">Atraso</th>
-      <th>Status</th>
-      <th style="text-align:right">Valor</th>
-    </tr>`;
-
-    const tfoot = `<tr style="background:#fff5f5;font-weight:800;color:#991b1b">
-      <td colspan="4" style="text-align:right;color:var(--muted)">TOTAL VENCIDO (${totalParcelas} parcelas):</td>
-      <td></td><td></td>
-      <td style="text-align:right;font-family:monospace;font-size:15px">${fmtMoney(totalGeral)}</td>
-    </tr>`;
-
-    res.innerHTML = `
-      <div class="table-wrap">
-        <div class="table-toolbar" style="justify-content:space-between">
-          <div style="font-weight:700">${titulos[tipo]} &nbsp;<span style="font-size:12px;color:var(--muted);font-weight:400">${data.length} fornecedor(es) · ${totalParcelas} parcela(s)</span></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('vencidosFornecedor')">📥 XLS</button>
-            <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('vencidosFornecedor')">📄 PDF</button>
-          </div>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="tbl">
-            <thead>${thead}</thead>
-            <tbody>${blocos}</tbody>
-            <tfoot>${tfoot}</tfoot>
-          </table>
-        </div>
-      </div>`;
-    return;
-  }
-
-  // Cabeçalho e linhas conforme tipo
-  let thead = '', tbody = '', tfoot = '';
-
-  if (tipo === 'baixas') {
-    const totalPago = data.reduce((s,{p}) => s + parseMoney(p.valorPago||p.valor), 0);
-    thead = `<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Data Pagamento</th><th>Valor Pago</th><th>Conta</th></tr>`;
-    tbody = data.map(({nf,p,idx}) =>
-      `<tr>
-        <td><strong>#${nf.numero}</strong></td>
-        <td>${nf.fornecedor}</td>
-        <td style="text-align:center">${idx}</td>
-        <td>${fmtDate(p.vencimento)}</td>
-        <td style="color:var(--green);font-weight:600">${fmtDate(p.dataPagamento)}</td>
-        <td style="font-family:monospace">${fmtMoney(parseMoney(p.valorPago||p.valor))}</td>
-        <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
-      </tr>`
-    ).join('');
-    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:var(--green)">
-      <td colspan="5" style="text-align:right;color:var(--muted)">TOTAL PAGO:</td>
-      <td style="font-family:monospace">${fmtMoney(totalPago)}</td><td></td>
-    </tr>`;
-  } else if (tipo==='vencidas'||tipo==='proximos'||tipo==='vencPeriodo'||tipo==='cartorio') {
-    const totalValor = data.reduce((s,{p}) => s + parseMoney(p.valor), 0);
-    const isVencidas = tipo==='vencidas';
-    thead = isVencidas
-      ? `<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>CNPJ</th><th style="text-align:center">Parcela</th><th>Vencimento</th><th style="text-align:right">Valor</th><th>Conta</th><th>Status</th><th style="text-align:center">Dias Atraso</th></tr>`
-      : `<tr><th>Nº NF</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Conta</th><th>Status</th></tr>`;
-    tbody = data.map(({nf,p,idx,diasVencido}) => isVencidas
-      ? `<tr>
-          <td><strong style="color:var(--accent)">#${nf.numero}</strong></td>
-          <td style="font-size:12px;color:var(--muted)">${fmtDate(nf.dataFat)}</td>
-          <td>${nf.fornecedor}</td>
-          <td style="font-size:11px;color:var(--muted);font-family:monospace">${nf.cnpj||'—'}</td>
-          <td style="text-align:center;font-weight:600">${idx}/${nf.numParcelas||1}</td>
-          <td style="color:#b91c1c;font-weight:600">${fmtDate(p.vencimento)}</td>
-          <td style="text-align:right;font-family:monospace;font-weight:700;color:#991b1b">${fmtMoney(parseMoney(p.valor))}</td>
-          <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
-          <td>${statusBadge(p.situacao||'VENCIDA')}</td>
-          <td style="text-align:center"><span style="background:#fee2e2;color:#991b1b;font-weight:700;font-family:monospace;padding:3px 8px;border-radius:20px;font-size:11px">+${diasVencido||0}d</span></td>
-        </tr>`
-      : `<tr>
-          <td><strong>#${nf.numero}</strong></td>
-          <td>${nf.fornecedor}</td>
-          <td style="text-align:center">${idx}</td>
-          <td>${fmtDate(p.vencimento)}</td>
-          <td style="font-family:monospace">${fmtMoney(parseMoney(p.valor))}</td>
-          <td style="font-size:12px;color:var(--muted)">${nf.conta||'—'}</td>
-          <td>${statusBadge(p.situacao||'A VENCER')}</td>
-        </tr>`
-    ).join('');
-    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:#b91c1c">
-      <td colspan="${isVencidas?6:4}" style="text-align:right;color:var(--muted)">TOTAL ${isVencidas?'VENCIDO':''}:</td>
-      <td style="font-family:monospace;text-align:${isVencidas?'right':'left'}">${fmtMoney(totalValor)}</td>
-      <td colspan="${isVencidas?3:2}"></td>
-    </tr>`;
-  } else {
-    const totalValor = data.reduce((s,n) => s + parseMoney(n.valorTotal), 0);
-    thead = `<tr><th>Nº NF</th><th>Data Fat.</th><th>Fornecedor</th><th>Valor Total</th><th>Conta</th><th>Parcelas</th><th>Validação</th><th>Status</th></tr>`;
-    tbody = data.map(n =>
-      `<tr>
-        <td><strong>#${n.numero}</strong></td>
-        <td>${fmtDate(n.dataFat)}</td>
-        <td>${n.fornecedor}</td>
-        <td style="font-family:monospace">${fmtMoney(parseMoney(n.valorTotal))}</td>
-        <td style="font-size:12px;color:var(--muted)">${n.conta||'—'}</td>
-        <td style="text-align:center">${n.numParcelas||1}x</td>
-        <td>${validBadge(n.validacao)}</td>
-        <td>${statusBadge(calcStatus(n))}</td>
-      </tr>`
-    ).join('');
-    tfoot = `<tr style="background:var(--surface2);font-weight:700;color:var(--accent)">
-      <td colspan="3" style="text-align:right;color:var(--muted)">TOTAL:</td>
-      <td style="font-family:monospace">${fmtMoney(totalValor)}</td><td colspan="4"></td>
-    </tr>`;
-  }
-
-  res.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-toolbar" style="justify-content:space-between">
-        <div style="font-weight:700">${titulos[tipo]||tipo} &nbsp;<span style="font-size:12px;color:var(--muted);font-weight:400">${data.length} registro(s)</span></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioXLS('${tipo}')">📥 XLS</button>
-          <button class="btn btn-ghost btn-sm" onclick="gerarRelatorioPDF('${tipo}')">📄 PDF</button>
-        </div>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="tbl">
-          <thead>${thead}</thead>
-          <tbody>${tbody}</tbody>
-          <tfoot>${tfoot}</tfoot>
-        </table>
-      </div>
-    </div>`;
-}
-
-
-// ====================================================
-// INIT
-// ====================================================
-window.onload=()=>{
-  // default date inputs
-  document.getElementById('relDe').value=new Date(new Date().getFullYear(),0,1).toISOString().slice(0,10);
-  document.getElementById('relAte').value=today();
-  document.getElementById('relVencDe').value=today();
-  const ate30 = new Date(); ate30.setDate(ate30.getDate()+30);
-  document.getElementById('relVencAte').value=ate30.toISOString().slice(0,10);
-
-  if (GAS_URL) {
-    mostrarTela('loginScreen');
-    document.getElementById('loginUser').focus();
-  } else {
-    mostrarTela('configScreen');
-  }
-};
-
-// ====================================================
-// EDITAR PARCELA (data de vencimento + status)
-// ====================================================
-let editarParcelaTarget = null;
-
-function abrirEditarParcela(nfId, idx) {
-  const nf = notas.find(x=>x.id===nfId);
-  if(!nf) return;
-  const p = nf.parcelas[idx];
-  editarParcelaTarget = {nfId, idx};
-  document.getElementById('editarParcelaTitle').textContent = `Editar Parcela ${idx+1} — NF #${nf.numero}`;
-  document.getElementById('editarParcelaInfo').innerHTML =
-    `<strong>${nf.fornecedor}</strong> | Parcela ${idx+1} | Venc. atual: <strong>${fmtDate(p.vencimento)}</strong> | Valor: <strong>${fmtMoney(parseMoney(p.valor))}</strong> | Status: ${statusBadge(p.situacao)}`;
-  document.getElementById('epVencimento').value = p.vencimento||'';
-  document.getElementById('epStatus').value = p.situacao||'A VENCER';
-  document.getElementById('epObs').value = '';
-  toggleCartorioInfo();
-  openModal('modalEditarParcela');
-}
-
-function toggleCartorioInfo() {
-  const st = document.getElementById('epStatus').value;
-  const show = st==='EM CARTÓRIO'||st==='PROTESTADA'||st==='TRÂNSITO DE CARTÓRIO';
-  document.getElementById('epCartorioInfo').style.display = show ? 'block' : 'none';
-}
-document.addEventListener('DOMContentLoaded', ()=>{
-  const el = document.getElementById('epStatus');
-  if(el) el.addEventListener('change', toggleCartorioInfo);
-});
-
-async function confirmarEditarParcela() {
-  if(!editarParcelaTarget) return;
-  const novoVenc   = document.getElementById('epVencimento').value;
-  const novoStatus = document.getElementById('epStatus').value;
-  const obs        = document.getElementById('epObs').value;
-  if(!novoVenc) { alert('Informe a data de vencimento.'); return; }
-
-  const nf = notas.find(x=>x.id===editarParcelaTarget.nfId);
-  const idx = editarParcelaTarget.idx;
-
-  const res = await apiCall('editarParcela', {
-    numero: nf.numero,
-    ano: nf.ano,
-    parcIdx: idx,
-    vencimento: novoVenc,
-    situacao: novoStatus,
-    obs: obs
-  });
-  if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
-
-  // Atualização otimista local
-  if(nf && nf.parcelas[idx]){
-    nf.parcelas[idx].vencimento = novoVenc;
-    nf.parcelas[idx].situacao   = novoStatus;
-    if(res.novoStatus) nf.status = res.novoStatus;
-  }
-  closeModal('modalEditarParcela');
-  closeModal('modalDetalheNF');
-  renderNotas();
-  if(currentUser.role==='admin') renderDashboard();
-
-  // Sync em background
-  reloadNotas().then(()=>{ renderNotas(); if(currentUser.role==='admin') renderDashboard(); });
-}
-
-// ====================================================
-// TOGGLE PROTESTA DIAS (modal fornecedor)
-// ====================================================
-function toggleProtestaDias() {
-  const v = document.getElementById('fProtesta').value;
-  const grp = document.getElementById('fProtestoDiasGrp');
-  if(grp) grp.style.display = v==='sim' ? 'block' : 'none';
-}
-
-// Atualiza label de dias em tempo real
-document.addEventListener('input', function(e){
-  if(e.target && e.target.id==='fProtesto'){
-    const lbl = document.getElementById('fProtestoDiasLabel');
-    if(lbl) lbl.textContent = e.target.value||'0';
-  }
-});
-</script>
-
-<!-- MODAL EDITAR PARCELA -->
-<div class="modal-overlay" id="modalEditarParcela">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-header">
-      <div class="modal-title" id="editarParcelaTitle">Editar Parcela</div>
-      <button class="modal-close" onclick="closeModal('modalEditarParcela')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="editarParcelaInfo" style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);margin-bottom:16px"></div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Nova Data de Vencimento</label>
-          <input type="date" id="epVencimento">
-        </div>
-        <div class="form-group">
-          <label>Status da Parcela</label>
-          <select id="epStatus">
-            <option value="A VENCER">A Vencer</option>
-            <option value="PRÓXIMO VENCIMENTO">Próximo Venc.</option>
-            <option value="VENCIDA">Vencida</option>
-            <option value="TRÂNSITO DE CARTÓRIO">Trânsito de Cartório</option>
-            <option value="EM CARTÓRIO">Em Cartório</option>
-            <option value="PROTESTADA">Protestada</option>
-            <option value="PAGO">Pago</option>
-          </select>
-        </div>
-      </div>
-      <div id="epCartorioInfo" style="display:none" class="notice notice-warn">
-        ⚖️ Ao marcar como <strong>Em Cartório</strong> ou <strong>Protestada</strong>, o sistema registra que esta parcela foi encaminhada/efetivada no cartório. Informe a nova data de vencimento conforme intimação recebida.
-      </div>
-      <div class="form-group" style="margin-top:8px">
-        <label>Observação</label>
-        <input type="text" id="epObs" placeholder="Ex: Notificação recebida em 10/06/2026, prazo até 20/06">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalEditarParcela')">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarEditarParcela()">💾 Salvar alteração</button>
-    </div>
-  </div>
-</div>
-</body>
-</html>
