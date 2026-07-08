@@ -186,22 +186,22 @@ a{color:var(--accent);text-decoration:none}
 .search-box:focus{outline:none;border-color:var(--accent)}
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f7faf8;border-bottom:1px solid var(--border);white-space:nowrap}
-.tbl td{padding:10px 14px;border-bottom:1px solid #eef3f0;font-size:13px;vertical-align:middle;color:var(--text)}
-.tbl td strong{color:#fff}
+.tbl td{padding:10px 14px;border-bottom:1px solid #eef3f0;font-size:13px;vertical-align:middle;color:#111827}
+.tbl td strong{color:#111827}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tr:hover td{background:#f0f9f4}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;border:1px solid transparent}
-.badge-pago{background:#10b98135;color:#6ee7b7;border-color:#10b98155}
-.badge-vencida{background:#ef444435;color:#fecaca;border-color:#ef444455}
-.badge-avencer{background:#3b82f635;color:#bfdbfe;border-color:#3b82f655}
-.badge-proximo{background:#f59e0b35;color:#fde68a;border-color:#f59e0b55}
-.badge-pendente{background:#6366f135;color:#ddd6fe;border-color:#6366f155}
-.badge-validado{background:#10b98135;color:#6ee7b7;border-color:#10b98155}
-.badge-aguardando{background:#f59e0b35;color:#fde68a;border-color:#f59e0b55}
-.badge-recusado{background:#ef444435;color:#fecaca;border-color:#ef444455}
-.badge-transito{background:#7c3aed35;color:#ddd6fe;border-color:#7c3aed55}
-.badge-cartorio{background:#9a3412 55;color:#fed7aa;border-color:#ea580c55;background:#ea580c35}
-.badge-protestada{background:#7f1d1d55;color:#fca5a5;border-color:#dc262655;font-weight:900}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border:1px solid transparent}
+.badge-pago{background:#d1fae5;color:#064e3b;border-color:#6ee7b7}
+.badge-vencida{background:#fee2e2;color:#7f1d1d;border-color:#f87171}
+.badge-avencer{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd}
+.badge-proximo{background:#fef3c7;color:#78350f;border-color:#fbbf24}
+.badge-pendente{background:#ede9fe;color:#3b0764;border-color:#a78bfa}
+.badge-validado{background:#d1fae5;color:#064e3b;border-color:#6ee7b7}
+.badge-aguardando{background:#fef3c7;color:#78350f;border-color:#fbbf24}
+.badge-recusado{background:#fee2e2;color:#7f1d1d;border-color:#f87171}
+.badge-transito{background:#ede9fe;color:#3b0764;border-color:#a78bfa}
+.badge-cartorio{background:#fff7ed;color:#7c2d12;border-color:#fb923c}
+.badge-protestada{background:#fecdd3;color:#7f1d1d;border-color:#f43f5e;font-weight:900}
 .tbl-actions{display:flex;gap:6px;flex-wrap:wrap}
 .pagination{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
 .page-btns{display:flex;gap:4px}
@@ -252,7 +252,7 @@ a{color:var(--accent);text-decoration:none}
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
 .stat-row:last-child{border:none}
 .notice{padding:14px 18px;border-radius:10px;font-size:13px;margin-bottom:16px;border-left:4px solid;display:flex;align-items:flex-start;gap:8px}
-.notice-info{background:#2f7d5e22;border:1px solid #2f7d5e55;color:#a7e8cc}
+.notice-info{background:#e8f5ee;border:1px solid #a7d7bc;color:#1a4d35}
 .notice-warn{background:#f59e0b20;border:1px solid #f59e0b40;color:#fcd34d}
 .notice-success{background:#10b98120;border:1px solid #10b98140;color:#6ee7b7}
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
@@ -409,12 +409,19 @@ input[type=date]{color-scheme:light}
       </nav>
     </div>
     <div class="topbar-right">
-      <div id="syncBadge" style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"></div>
+      <div id="syncBadge" style="font-size:11px;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:5px"></div>
+      <button onclick="atualizarTudo(this)"
+        style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;transition:all .15s"
+        onmouseover="this.style.background='rgba(255,255,255,.25)'"
+        onmouseout="this.style.background='rgba(255,255,255,.15)'"
+        title="Buscar dados atualizados da planilha">
+        🔄 Atualizar
+      </button>
       <div class="user-badge">
         <span id="userNameBadge">–</span>
         <span id="userRoleBadge" class="user-role">–</span>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sair</button>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()" style="color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.25)">Sair</button>
     </div>
   </div>
 
@@ -615,8 +622,8 @@ input[type=date]{color-scheme:light}
           <div style="font-size:16px;font-weight:700;margin-bottom:6px">Relatório por Período</div>
           <div style="color:var(--muted);font-size:13px">Filtre notas por data de faturamento</div>
           <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div><label style="font-size:11px;color:var(--muted)">De</label><input type="date" id="relDe" class="form-group" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font)"></div>
-            <div><label style="font-size:11px;color:var(--muted)">Até</label><input type="date" id="relAte" class="form-group" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font)"></div>
+            <div><label style="font-size:11px;color:#4b5563">De</label><input type="date" id="relDe" class="form-group" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font)"></div>
+            <div><label style="font-size:11px;color:#4b5563">Até</label><input type="date" id="relAte" class="form-group" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font)"></div>
           </div>
           <div style="margin-top:12px;display:flex;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gerarRelatorioXLS('periodo')">📥 XLS</button>
@@ -1047,32 +1054,42 @@ let authToken = localStorage.getItem('nf_token') || '';
 // mas usamos POST sempre para evitar limite de tamanho de URL.
 async function apiCall(acao, params) {
   params = params || {};
-  params.acao = acao;
+  params.acao   = acao;
+  params._t     = Date.now(); // cache-busting — força dados frescos do GAS
   if (authToken) params.token = authToken;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 55000);
 
   try {
     const resp = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
-      body: JSON.stringify(params)
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify(params),
+      signal:  controller.signal
     });
+    clearTimeout(timer);
     const data = await resp.json();
-    if (data.expirado) {
-      alert('Sua sessão expirou. Faça login novamente.');
-      doLogout();
-    }
+    if (data.expirado) { alert('Sessão expirada. Faça login novamente.'); doLogout(); }
     return data;
   } catch (e) {
-    return { ok: false, erro: 'Falha de conexão com a planilha: ' + e.message };
+    clearTimeout(timer);
+    return { ok: false, erro: e.name === 'AbortError'
+      ? 'Tempo limite (55s). A operação pode ter sido concluída — clique em Atualizar para verificar.'
+      : 'Falha de conexão: ' + e.message };
   }
 }
 
 function setSyncBadge(status) {
   const el = document.getElementById('syncBadge');
   if (!el) return;
-  if (status === 'ok')      el.innerHTML = '🟢 Conectado';
-  else if (status === 'sync') el.innerHTML = '🔄 Sincronizando...';
-  else                       el.innerHTML = '🔴 Offline';
+  const h = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(status==='ok')
+    el.innerHTML = `<span style="color:#4ade80">●</span><span style="color:rgba(255,255,255,.55)">Atualizado ${h}</span>`;
+  else if(status==='sync')
+    el.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block;color:rgba(255,255,255,.7)">⟳</span><span style="color:rgba(255,255,255,.55)">Atualizando...</span>`;
+  else
+    el.innerHTML = `<span style="color:#f87171">●</span><span style="color:rgba(255,255,255,.55)">Erro — clique Atualizar</span>`;
 }
 
 // ====================================================
@@ -1135,11 +1152,10 @@ async function loadData() {
 }
 
 // Recarrega só as notas (após salvar/editar/aprovar etc)
-async function reloadNotas() {
-  setSyncBadge('sync');
+async function reloadNotas(silencioso=false) {
+  if(!silencioso) setSyncBadge('sync');
   const res = await apiCall('listarNotas', {});
-  if (res.ok) notas = res.notas;
-  normalizarNotas();
+  if(res.ok){ notas = res.notas; normalizarNotas(); }
   setSyncBadge(res.ok ? 'ok' : 'erro');
   return res.ok;
 }
@@ -1190,25 +1206,41 @@ async function doLogin() {
   const rb = document.getElementById('userRoleBadge');
   rb.textContent = currentUser.isMaster ? 'Master' : currentUser.role === 'admin' ? 'Administrador' : 'Operador';
   rb.className = 'user-role ' + (currentUser.isMaster?'role-master':currentUser.role==='admin'?'role-admin':'role-operador');
+  // Avatar com inicial
+  const av = document.getElementById('sidebarAvatar');
+  if(av && currentUser.nome) av.textContent = currentUser.nome.charAt(0).toUpperCase();
 
   aplicarPermissoes();
 
+  // Navega imediatamente — skeleton nos KPIs enquanto carrega
+  if (currentUser.role === 'admin') {
+    goPage('dashboard', document.getElementById('navDashboard'));
+    const kpiEl = document.getElementById('kpiGrid');
+    if(kpiEl) kpiEl.innerHTML = Array(6).fill(`
+      <div class="kpi" style="opacity:.45">
+        <div style="height:11px;width:55%;border-radius:4px;background:#dde8e3;margin-bottom:10px"></div>
+        <div style="height:26px;width:70%;border-radius:4px;background:#dde8e3;margin-bottom:8px"></div>
+        <div style="height:9px;width:40%;border-radius:4px;background:#dde8e3"></div>
+      </div>`).join('');
+  } else {
+    goPage('notas', document.querySelector('[data-page="notas"]'));
+  }
+
+  setSyncBadge('sync');
   await loadData();
   populateSelects();
+  popularSelectsContas();
+  normalizarNotas();
   renderNotas();
   renderFornecedores();
 
-  // Dashboard só para admin/master — operador cai em Notas
-  if (currentUser.role === 'admin') {
-    renderDashboard();
-    goPage('dashboard', document.getElementById('navDashboard'));
-  } else {
-    // Operador: cai direto em Notas (sem status de pagamento)
-    goPage('notas', document.querySelector('[data-page="notas"]'));
-  }
+  if (currentUser.role === 'admin') renderDashboard();
+
+  iniciarAutoRefresh();
+  setSyncBadge('ok');
 }
-document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('loginPass')?.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('loginUser')?.addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPass')?.focus(); });
 
 // ====================================================
 // TELAS (login / cadastro)
@@ -1322,6 +1354,7 @@ function aplicarPermissoes() {
 }
 
 function doLogout() {
+  if(_autoRefreshTimer){ clearInterval(_autoRefreshTimer); _autoRefreshTimer=null; }
   currentUser = null;
   authToken = '';
   localStorage.removeItem('nf_token');
@@ -1329,6 +1362,42 @@ function doLogout() {
   mostrarTela('loginScreen');
   document.getElementById('loginUser').value='';
   document.getElementById('loginPass').value='';
+}
+
+// ====================================================
+// AUTO-REFRESH E ATUALIZAR TUDO
+// ====================================================
+let _autoRefreshTimer = null;
+
+async function atualizarTudo(btn) {
+  const orig = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled=true; btn.innerHTML='⏳ Atualizando...'; }
+  setSyncBadge('sync');
+  await loadData();
+  populateSelects();
+  popularSelectsContas();
+  renderNotas();
+  renderFornecedores();
+  if(currentUser?.role==='admin') renderDashboard();
+  const pAtiva = document.querySelector('.page.active');
+  if(pAtiva?.id==='page-aprovacao') filterAprovacao();
+  if(btn){ btn.disabled=false; btn.innerHTML=orig; }
+  setSyncBadge('ok');
+}
+
+function iniciarAutoRefresh() {
+  if(_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+  _autoRefreshTimer = setInterval(async () => {
+    if(!authToken || document.hidden) return;
+    await reloadNotas(true);
+    const pAtiva = document.querySelector('.page.active');
+    if(!pAtiva) return;
+    const id = pAtiva.id.replace('page-','');
+    if(id==='notas')     renderNotas();
+    if(id==='aprovacao') filterAprovacao();
+    if(id==='dashboard' && currentUser?.role==='admin') renderDashboard();
+    setSyncBadge('ok');
+  }, 5 * 60 * 1000);
 }
 
 // ====================================================
@@ -1806,7 +1875,7 @@ function renderNotasTable() {
       <td>${fmtDate(n.dataFat)}</td>
       <td>${n.fornecedor}</td>
       <td>${fmtMoney(parseMoney(n.valorTotal))}</td>
-      <td style="font-size:11px;color:var(--muted)">${n.numParcelas}x</td>
+      <td style="font-size:11px;color:#4b5563">${n.numParcelas}x</td>
       <td style="font-size:12px">${n.conta||'—'}</td>
       <td>${validBadge(n.validacao)}</td>
       ${showStatus ? `<td>${statusBadge(st)}</td>` : ''}
@@ -2339,13 +2408,10 @@ function renderDashboard() {
   ].map(k=>`<div class="kpi ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
   // Popular selects de mês ANTES de ler os valores
+  // Meses disponíveis baseados em dataFat (data de faturamento)
   const mesesSet = new Set();
   filtered.forEach(n=>{
     if(n.dataFat && n.dataFat.length>=7) mesesSet.add(n.dataFat.slice(0,7));
-    (n.parcelas||[]).forEach(p=>{
-      if(p.vencimento    ?.length>=7) mesesSet.add(p.vencimento.slice(0,7));
-      if(p.dataPagamento ?.length>=7) mesesSet.add(p.dataPagamento.slice(0,7));
-    });
   });
   const mesesDisp = [...mesesSet].filter(m=>/^\d{4}-\d{2}$/.test(m)).sort();
   const optsM = '<option value="all">Total</option>' +
@@ -2372,8 +2438,11 @@ function renderDashboard() {
     [countPago,countVenc,countProximo,countAvencer],
     ['#10b981','#ef4444','#f59e0b','#3b82f6']);
 
+  // Contas Financeiras: filtro por mês de FATURAMENTO (dataFat)
+  const filtMesFat = (lista, mes) => mes==='all' ? lista :
+    lista.filter(n => n.dataFat && n.dataFat.slice(0,7) === mes);
   const cMap={};
-  filtMes(filtered,vC).forEach(n=>{ const k=n.conta||'OUTROS'; cMap[k]=(cMap[k]||0)+parseMoney(n.valorTotal); });
+  filtMesFat(filtered,vC).forEach(n=>{ const k=n.conta||'OUTROS'; cMap[k]=(cMap[k]||0)+parseMoney(n.valorTotal); });
   const cTop=Object.entries(cMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   renderChart('chartContas','bar',cTop.map(x=>x[0]),cTop.map(x=>x[1]),['#6366f1'],true);
 
@@ -2916,17 +2985,23 @@ function gerarRelatorio(tipo) {
 // ====================================================
 // INIT
 // ====================================================
-window.onload=()=>{
-  // default date inputs
-  document.getElementById('relDe').value=new Date(new Date().getFullYear(),0,1).toISOString().slice(0,10);
-  document.getElementById('relAte').value=today();
-  document.getElementById('relVencDe').value=today();
-  const ate30 = new Date(); ate30.setDate(ate30.getDate()+30);
-  document.getElementById('relVencAte').value=ate30.toISOString().slice(0,10);
+window.onload = () => {
+  // Protege com optional chaining para evitar erro se elemento não existir
+  const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+  const ano1   = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0,10);
+  const hoje   = today();
+  const ate30  = new Date(); ate30.setDate(ate30.getDate()+30);
+
+  setVal('relDe',       ano1);
+  setVal('relAte',      hoje);
+  setVal('relVencDe',   hoje);
+  setVal('relVencAte',  ate30.toISOString().slice(0,10));
+  setVal('relBaixaDe',  new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10));
+  setVal('relBaixaAte', hoje);
 
   if (GAS_URL) {
     mostrarTela('loginScreen');
-    document.getElementById('loginUser').focus();
+    document.getElementById('loginUser')?.focus();
   } else {
     mostrarTela('configScreen');
   }
