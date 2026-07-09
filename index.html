@@ -405,6 +405,7 @@ input[type=date]{color-scheme:light}
         <button class="nav-btn" data-page="aprovacao" onclick="goPage('aprovacao',this)" id="navAprov">✅ <span>Aprovação</span></button>
         <button class="nav-btn" data-page="fornecedores" onclick="goPage('fornecedores',this)">🏢 <span>Fornecedores</span></button>
         <button class="nav-btn" data-page="relatorios" onclick="goPage('relatorios',this)" id="navRelatorios">📑 <span>Relatórios</span></button>
+        <button class="nav-btn" data-page="contas" onclick="goPage('contas',this)" id="navContas">🏷️ <span>Contas</span></button>
         <button class="nav-btn" data-page="usuarios" onclick="goPage('usuarios',this)" id="navUsuarios" style="display:none">👥 <span>Usuários</span></button>
       </nav>
     </div>
@@ -736,6 +737,28 @@ input[type=date]{color-scheme:light}
       </div><!-- /relGrid -->
       <div id="relResultado" style="margin-top:24px"></div>
     </div>
+    <!-- CONTAS FINANCEIRAS -->
+    <div id="page-contas" class="page">
+      <div class="page-header"><h2>Contas Financeiras</h2></div>
+      <div class="notice notice-info">💡 Gerencie as contas financeiras disponíveis para lançamento de NFs. Contas padrão não podem ser removidas. As contas ficam salvas neste navegador.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent)">Contas cadastradas</div>
+          <div class="table-wrap" id="listaContasGerenciar"></div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent)">Adicionar nova conta</div>
+          <div class="table-wrap" style="padding:20px">
+            <div class="form-group">
+              <label>Nome da conta *</label>
+              <input type="text" id="novaContaNome" placeholder="Ex: TECNOLOGIA, VEÍCULOS, SEGURANÇA..." style="text-transform:uppercase">
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="adicionarContaUI()">➕ Adicionar Conta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="page-usuarios" class="page">
       <div class="page-header">
         <h2>Gestão de Usuários</h2>
@@ -841,13 +864,7 @@ input[type=date]{color-scheme:light}
             </select>
           </div>
           <div class="form-group"><label>Conta Financeira *</label>
-            <select id="nfConta">
-              <option value="">Selecione...</option>
-              <option>FARMACIA</option><option>MANUTENÇÃO</option><option>INFORMATICA</option>
-              <option>HIG/LIMPEZA E DESCARTAVEIS</option><option>MATERIAL DE ESCRITÓRIO</option>
-              <option>ALIMENTAÇÃO</option><option>EQUIPAMENTOS</option><option>OBRAS</option>
-              <option>OUTROS</option>
-            </select>
+            <select id="nfConta" onchange="onContaChange('nfConta')"><option value="">— Selecione —</option></select>
           </div>
           <div class="form-group"><label>Ano Referência</label>
             <select id="nfAno">
@@ -1042,7 +1059,59 @@ let editingNFId = null;
 let baixarTarget = null; // {nfId, parcIdx}
 let recusaTarget = null;
 
-const CONTAS = ['FARMACIA','MANUTENÇÃO','INFORMATICA','HIG/LIMPEZA E DESCARTAVEIS','MATERIAL DE ESCRITÓRIO','ALIMENTAÇÃO','EQUIPAMENTOS','OBRAS','OUTROS'];
+const CONTAS_PADRAO = ['FARMACIA','MANUTENÇÃO','INFORMATICA','HIG/LIMPEZA E DESCARTAVEIS','MATERIAL DE ESCRITÓRIO','ALIMENTAÇÃO','EQUIPAMENTOS','OBRAS','OUTROS'];
+let CONTAS = JSON.parse(localStorage.getItem('nf_contas')||'null') || [...CONTAS_PADRAO];
+
+function salvarContasStorage(){ localStorage.setItem('nf_contas',JSON.stringify(CONTAS)); }
+
+function adicionarConta(nome){
+  nome=nome.trim().toUpperCase();
+  if(!nome||CONTAS.includes(nome)) return false;
+  CONTAS.push(nome); salvarContasStorage(); popularSelectsContas(); return true;
+}
+
+function removerConta(nome){
+  if(CONTAS_PADRAO.includes(nome)){alert('Não é possível remover contas padrão.');return;}
+  if(!confirm('Remover "'+nome+'"?')) return;
+  CONTAS=CONTAS.filter(x=>x!==nome); salvarContasStorage(); popularSelectsContas(); renderListaContas();
+}
+
+function popularSelectsContas(){
+  ['nfConta','xNfConta'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const cur=el.value;
+    el.innerHTML='<option value="">— Selecione —</option>';
+    CONTAS.forEach(ct=>{el.innerHTML+=`<option value="${ct}"${ct===cur?' selected':''}>${ct}</option>`;});
+    el.innerHTML+='<option value="__NOVA__">➕ Nova conta...</option>';
+  });
+  renderListaContas();
+}
+
+function onContaChange(selId){
+  const el=document.getElementById(selId);
+  if(el&&el.value==='__NOVA__'){
+    const nome=prompt('Nome da nova conta financeira:');
+    if(nome&&nome.trim()){ if(adicionarConta(nome)) el.value=nome.trim().toUpperCase(); else{alert('Conta já existe.');el.value='';} }
+    else el.value='';
+  }
+}
+
+function renderListaContas(){
+  const el=document.getElementById('listaContasGerenciar'); if(!el) return;
+  el.innerHTML=CONTAS.map(ct=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px">
+      <span><strong>${ct}</strong>${CONTAS_PADRAO.includes(ct)?' <span style="font-size:10px;color:var(--muted)">(padrão)</span>':''}</span>
+      ${!CONTAS_PADRAO.includes(ct)?`<button class="btn btn-danger btn-sm" onclick="removerConta('${ct}')">🗑 Remover</button>`:'<span style="color:var(--muted);font-size:11px">—</span>'}
+    </div>`).join('');
+}
+
+function adicionarContaUI(){
+  const el=document.getElementById('novaContaNome');
+  const nome=(el?.value||'').trim().toUpperCase();
+  if(!nome){alert('Informe o nome da conta.');return;}
+  if(adicionarConta(nome)){el.value='';alert('✅ Conta "'+nome+'" adicionada!');}
+  else alert('Conta já existe ou nome inválido.');
+}
 
 // ====================================================
 // CONEXÃO COM A PLANILHA (Google Apps Script)
@@ -1422,6 +1491,7 @@ function goPage(id, btn) {
   if(id==='relatorios') populateRelFornSelect();
   if(id==='dashboard') renderDashboard();
   if(id==='usuarios') renderUsuarios();
+  if(id==='contas') renderListaContas();
 }
 
 // ====================================================
@@ -1530,6 +1600,7 @@ function canVerPagamento() { return currentUser && currentUser.role==='admin'; }
 // SELECTS
 // ====================================================
 function populateSelects() {
+  popularSelectsContas();
   const selects = ['nfFornecedor','filtFornecedor','relFornecedor'];
   selects.forEach(id => {
     const el = document.getElementById(id);
@@ -2124,6 +2195,35 @@ function _renderAprovacaoLista(lista) {
   }).join('');
 }
 
+
+// ====================================================
+// APROVAR / RECUSAR NF
+// ====================================================
+async function aprovarNF(nfId) {
+  const nf = notas.find(x=>x.id===nfId);
+  if(!nf) return;
+  const anterior = nf.validacao;
+  nf.validacao = 'VALIDADO';
+  filterAprovacao(); renderNotas();
+  apiCall('aprovarNota',{numero:nf.numero,ano:nf.ano}).then(res=>{
+    if(!res.ok){ nf.validacao=anterior; filterAprovacao(); renderNotas(); alert('Erro: '+(res.erro||'')); }
+    else reloadNotas(true);
+  });
+}
+
+async function recusarNF(nfId) {
+  const nf = notas.find(x=>x.id===nfId);
+  if(!nf) return;
+  const motivo = prompt('Motivo da recusa (obrigatório):');
+  if(!motivo||!motivo.trim()) return;
+  const anterior = nf.validacao;
+  nf.validacao = 'RECUSADO: '+motivo.trim();
+  filterAprovacao(); renderNotas();
+  apiCall('recusarNota',{numero:nf.numero,ano:nf.ano,motivo:motivo.trim()}).then(res=>{
+    if(!res.ok){ nf.validacao=anterior; filterAprovacao(); renderNotas(); alert('Erro: '+(res.erro||'')); }
+    else reloadNotas(true);
+  });
+}
 
 // ====================================================
 // FORNECEDORES
