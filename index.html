@@ -1098,11 +1098,45 @@ function onContaChange(selId){
 
 function renderListaContas(){
   const el=document.getElementById('listaContasGerenciar'); if(!el) return;
-  el.innerHTML=CONTAS.map(ct=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px">
-      <span><strong>${ct}</strong>${CONTAS_PADRAO.includes(ct)?' <span style="font-size:10px;color:var(--muted)">(padrão)</span>':''}</span>
-      ${!CONTAS_PADRAO.includes(ct)?`<button class="btn btn-danger btn-sm" onclick="removerConta('${ct}')">🗑 Remover</button>`:'<span style="color:var(--muted);font-size:11px">—</span>'}
+  el.innerHTML=CONTAS.map((ct,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px" id="conta-row-${i}">
+      <span style="flex:1"><strong id="conta-label-${i}">${ct}</strong>${CONTAS_PADRAO.includes(ct)?' <span style="font-size:10px;color:var(--muted)">(padrão)</span>':''}</span>
+      <input type="text" id="conta-input-${i}" value="${ct}" style="display:none;flex:1;padding:4px 8px;border:1px solid var(--accent);border-radius:6px;font-size:13px;font-weight:600">
+      <button class="btn btn-ghost btn-sm" id="conta-btn-edit-${i}" onclick="editarContaInline(${i},'${ct}')" title="Renomear">✏️</button>
+      <button class="btn btn-success btn-sm" id="conta-btn-save-${i}" style="display:none" onclick="salvarContaInline(${i},'${ct}')">✅ Salvar</button>
+      <button class="btn btn-ghost btn-sm" id="conta-btn-cancel-${i}" style="display:none" onclick="cancelarContaInline(${i},'${ct}')">✕</button>
+      ${!CONTAS_PADRAO.includes(ct)?`<button class="btn btn-danger btn-sm" onclick="removerConta('${ct}')">🗑</button>`:''}
     </div>`).join('');
+}
+
+function editarContaInline(i, nome){
+  document.getElementById('conta-label-'+i).style.display='none';
+  document.getElementById('conta-input-'+i).style.display='';
+  document.getElementById('conta-input-'+i).focus();
+  document.getElementById('conta-btn-edit-'+i).style.display='none';
+  document.getElementById('conta-btn-save-'+i).style.display='';
+  document.getElementById('conta-btn-cancel-'+i).style.display='';
+}
+
+function cancelarContaInline(i, nome){
+  document.getElementById('conta-label-'+i).style.display='';
+  document.getElementById('conta-input-'+i).style.display='none';
+  document.getElementById('conta-btn-edit-'+i).style.display='';
+  document.getElementById('conta-btn-save-'+i).style.display='none';
+  document.getElementById('conta-btn-cancel-'+i).style.display='none';
+}
+
+function salvarContaInline(i, nomeAntigo){
+  const novoNome = (document.getElementById('conta-input-'+i)?.value||'').trim().toUpperCase();
+  if(!novoNome){ alert('Nome não pode ser vazio.'); return; }
+  if(novoNome === nomeAntigo){ cancelarContaInline(i, nomeAntigo); return; }
+  if(CONTAS.includes(novoNome)){ alert('Já existe uma conta com esse nome.'); return; }
+  const idx = CONTAS.indexOf(nomeAntigo);
+  if(idx === -1){ alert('Conta não encontrada.'); return; }
+  CONTAS[idx] = novoNome;
+  salvarContasStorage();
+  popularSelectsContas();
+  renderListaContas();
 }
 
 function adicionarContaUI(){
@@ -2203,12 +2237,21 @@ async function aprovarNF(nfId) {
   const nf = notas.find(x=>x.id===nfId);
   if(!nf) return;
   const anterior = nf.validacao;
+  // Otimista: some da fila imediatamente
   nf.validacao = 'VALIDADO';
-  filterAprovacao(); renderNotas();
-  apiCall('aprovarNota',{numero:nf.numero,ano:nf.ano}).then(res=>{
-    if(!res.ok){ nf.validacao=anterior; filterAprovacao(); renderNotas(); alert('Erro: '+(res.erro||'')); }
-    else reloadNotas(true);
-  });
+  filterAprovacao();
+  renderNotas();
+  const res = await apiCall('aprovarNota', {numero: nf.numero, ano: nf.ano});
+  if(!res.ok){
+    nf.validacao = anterior; // reverte
+    filterAprovacao(); renderNotas();
+    alert('Erro ao aprovar: '+(res.erro||''));
+    return;
+  }
+  // Confirma dados do servidor e re-renderiza
+  await reloadNotas(false);
+  filterAprovacao();
+  renderNotas();
 }
 
 async function recusarNF(nfId) {
@@ -2217,12 +2260,21 @@ async function recusarNF(nfId) {
   const motivo = prompt('Motivo da recusa (obrigatório):');
   if(!motivo||!motivo.trim()) return;
   const anterior = nf.validacao;
+  // Otimista: some da fila imediatamente
   nf.validacao = 'RECUSADO: '+motivo.trim();
-  filterAprovacao(); renderNotas();
-  apiCall('recusarNota',{numero:nf.numero,ano:nf.ano,motivo:motivo.trim()}).then(res=>{
-    if(!res.ok){ nf.validacao=anterior; filterAprovacao(); renderNotas(); alert('Erro: '+(res.erro||'')); }
-    else reloadNotas(true);
-  });
+  filterAprovacao();
+  renderNotas();
+  const res = await apiCall('recusarNota', {numero: nf.numero, ano: nf.ano, motivo: motivo.trim()});
+  if(!res.ok){
+    nf.validacao = anterior; // reverte
+    filterAprovacao(); renderNotas();
+    alert('Erro ao recusar: '+(res.erro||''));
+    return;
+  }
+  // Confirma dados do servidor e re-renderiza
+  await reloadNotas(false);
+  filterAprovacao();
+  renderNotas();
 }
 
 // ====================================================
