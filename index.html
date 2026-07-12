@@ -2162,26 +2162,25 @@ async function excluirNF(id) {
 // APROVAÇÃO
 // ====================================================
 function filterAprovacao() {
-  const q = (document.getElementById('searchAprovacao')?.value||'').toLowerCase();
-  const stFilt = (document.getElementById('filtAprovStatus')?.value||'');
+  const q       = (document.getElementById('searchAprovacao')?.value||'').toLowerCase();
+  const stFilt  = (document.getElementById('filtAprovStatus')?.value||'');
   const anoFilt = document.getElementById('filtAprovAno')?.value||'';
 
   const lista = notas.filter(nf => {
     if (anoFilt && nf.ano !== anoFilt) return false;
     const valid = String(nf.validacao||'').toUpperCase();
 
-    // Por padrão (sem filtro selecionado) mostra APENAS aguardando validação
-    if (!stFilt) {
+    // Padrão e 'AGUARDANDO': só mostra notas aguardando — exclui explicitamente recusadas e validadas
+    if (!stFilt || stFilt === 'AGUARDANDO') {
       if (valid.indexOf('AGUARDANDO') === -1) return false;
-    } else if (stFilt === 'AGUARDANDO') {
-      if (valid.indexOf('AGUARDANDO') === -1) return false;
+      if (valid.indexOf('RECUSADO')   !== -1) return false; // dupla garantia
+      if (valid === 'VALIDADO')               return false; // dupla garantia
     } else if (stFilt === 'VALIDADO') {
       if (valid !== 'VALIDADO') return false;
     } else if (stFilt === 'RECUSADO') {
       if (valid.indexOf('RECUSADO') === -1) return false;
-    } else if (stFilt === 'TODAS') {
-      // sem filtro adicional — mostra todas
     }
+    // stFilt === 'TODAS' — não filtra por validação
 
     if (q && !(nf.numero+' '+nf.fornecedor+' '+(nf.cnpj||'')).toLowerCase().includes(q)) return false;
     return true;
@@ -2237,21 +2236,23 @@ async function aprovarNF(nfId) {
   const nf = notas.find(x=>x.id===nfId);
   if(!nf) return;
   const anterior = nf.validacao;
-  // Otimista: some da fila imediatamente
   nf.validacao = 'VALIDADO';
   filterAprovacao();
   renderNotas();
   const res = await apiCall('aprovarNota', {numero: nf.numero, ano: nf.ano});
   if(!res.ok){
-    nf.validacao = anterior; // reverte
+    nf.validacao = anterior;
     filterAprovacao(); renderNotas();
     alert('Erro ao aprovar: '+(res.erro||''));
     return;
   }
-  // Confirma dados do servidor e re-renderiza
-  await reloadNotas(false);
-  filterAprovacao();
-  renderNotas();
+  // Reload em background — mas FORÇA validação correta após (GAS pode ter cache)
+  reloadNotas(true).then(()=>{
+    const nfAtual = notas.find(x=>x.id===nfId);
+    if(nfAtual && nfAtual.validacao !== 'VALIDADO') nfAtual.validacao = 'VALIDADO';
+    filterAprovacao();
+    renderNotas();
+  });
 }
 
 async function recusarNF(nfId) {
@@ -2260,21 +2261,24 @@ async function recusarNF(nfId) {
   const motivo = prompt('Motivo da recusa (obrigatório):');
   if(!motivo||!motivo.trim()) return;
   const anterior = nf.validacao;
-  // Otimista: some da fila imediatamente
-  nf.validacao = 'RECUSADO: '+motivo.trim();
+  const novaValidacao = 'RECUSADO: '+motivo.trim();
+  nf.validacao = novaValidacao;
   filterAprovacao();
   renderNotas();
   const res = await apiCall('recusarNota', {numero: nf.numero, ano: nf.ano, motivo: motivo.trim()});
   if(!res.ok){
-    nf.validacao = anterior; // reverte
+    nf.validacao = anterior;
     filterAprovacao(); renderNotas();
     alert('Erro ao recusar: '+(res.erro||''));
     return;
   }
-  // Confirma dados do servidor e re-renderiza
-  await reloadNotas(false);
-  filterAprovacao();
-  renderNotas();
+  // Reload em background — mas FORÇA validação correta após (GAS pode ter cache)
+  reloadNotas(true).then(()=>{
+    const nfAtual = notas.find(x=>x.id===nfId);
+    if(nfAtual && nfAtual.validacao.indexOf('RECUSADO')===-1) nfAtual.validacao = novaValidacao;
+    filterAprovacao();
+    renderNotas();
+  });
 }
 
 // ====================================================
