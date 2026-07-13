@@ -1257,8 +1257,24 @@ async function loadData() {
 // Recarrega só as notas (após salvar/editar/aprovar etc)
 async function reloadNotas(silencioso=false) {
   if(!silencioso) setSyncBadge('sync');
+  // Salvar validações já aplicadas localmente antes do reload
+  const validacoesLocais = {};
+  notas.forEach(n => {
+    const v = String(n.validacao||'').toUpperCase();
+    // Preservar apenas validações que já foram definidas (não AGUARDANDO)
+    if(v !== 'AGUARDANDO VALIDAÇÃO' && v.indexOf('AGUARDANDO') === -1) {
+      validacoesLocais[n.id] = n.validacao;
+    }
+  });
   const res = await apiCall('listarNotas', {});
-  if(res.ok){ notas = res.notas; normalizarNotas(); }
+  if(res.ok){
+    notas = res.notas;
+    normalizarNotas();
+    // Restaurar validações locais que o GAS ainda não confirmou
+    notas.forEach(n => {
+      if(validacoesLocais[n.id]) n.validacao = validacoesLocais[n.id];
+    });
+  }
   setSyncBadge(res.ok ? 'ok' : 'erro');
   return res.ok;
 }
@@ -2236,22 +2252,20 @@ async function aprovarNF(nfId) {
   const nf = notas.find(x=>x.id===nfId);
   if(!nf) return;
   const anterior = nf.validacao;
+
+  // Some IMEDIATAMENTE sem esperar nada
   nf.validacao = 'VALIDADO';
   filterAprovacao();
   renderNotas();
-  const res = await apiCall('aprovarNota', {numero: nf.numero, ano: nf.ano});
-  if(!res.ok){
-    nf.validacao = anterior;
-    filterAprovacao(); renderNotas();
-    alert('Erro ao aprovar: '+(res.erro||''));
-    return;
-  }
-  // Reload em background — mas FORÇA validação correta após (GAS pode ter cache)
-  reloadNotas(true).then(()=>{
-    const nfAtual = notas.find(x=>x.id===nfId);
-    if(nfAtual && nfAtual.validacao !== 'VALIDADO') nfAtual.validacao = 'VALIDADO';
-    filterAprovacao();
-    renderNotas();
+
+  // Envia ao GAS sem bloquear UI e SEM reload (reload sobrescreveria)
+  apiCall('aprovarNota', {numero: nf.numero, ano: nf.ano}).then(res=>{
+    if(!res.ok){
+      nf.validacao = anterior;
+      filterAprovacao(); renderNotas();
+      alert('Erro ao aprovar: '+(res.erro||''));
+    }
+    // Sucesso: não faz reload — a tela já está correta
   });
 }
 
@@ -2261,23 +2275,20 @@ async function recusarNF(nfId) {
   const motivo = prompt('Motivo da recusa (obrigatório):');
   if(!motivo||!motivo.trim()) return;
   const anterior = nf.validacao;
-  const novaValidacao = 'RECUSADO: '+motivo.trim();
-  nf.validacao = novaValidacao;
+
+  // Some IMEDIATAMENTE sem esperar nada
+  nf.validacao = 'RECUSADO: '+motivo.trim();
   filterAprovacao();
   renderNotas();
-  const res = await apiCall('recusarNota', {numero: nf.numero, ano: nf.ano, motivo: motivo.trim()});
-  if(!res.ok){
-    nf.validacao = anterior;
-    filterAprovacao(); renderNotas();
-    alert('Erro ao recusar: '+(res.erro||''));
-    return;
-  }
-  // Reload em background — mas FORÇA validação correta após (GAS pode ter cache)
-  reloadNotas(true).then(()=>{
-    const nfAtual = notas.find(x=>x.id===nfId);
-    if(nfAtual && nfAtual.validacao.indexOf('RECUSADO')===-1) nfAtual.validacao = novaValidacao;
-    filterAprovacao();
-    renderNotas();
+
+  // Envia ao GAS sem bloquear UI e SEM reload
+  apiCall('recusarNota', {numero: nf.numero, ano: nf.ano, motivo: motivo.trim()}).then(res=>{
+    if(!res.ok){
+      nf.validacao = anterior;
+      filterAprovacao(); renderNotas();
+      alert('Erro ao recusar: '+(res.erro||''));
+    }
+    // Sucesso: não faz reload — a tela já está correta
   });
 }
 
