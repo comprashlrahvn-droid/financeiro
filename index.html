@@ -1052,6 +1052,9 @@ input[type=date]{color-scheme:light}
 const MASTER_EMAIL = window.MASTER_EMAIL = 'comprashlr.ahvn@gmail.com';
 let currentUser = null;
 let notas = [];
+// Lista negra local: NFs que foram aprovadas/recusadas nesta sessão
+// Persiste mesmo após reloadNotas para que nunca reapareçam na fila
+const _validacoesDefinitivas = {}; // { nfId: 'VALIDADO' | 'RECUSADO: motivo' }
 let fornecedores = [];
 let notasPag = 1;
 const PER_PAGE = 20;
@@ -1281,6 +1284,13 @@ async function reloadNotas(silencioso=false) {
 
 // Garante um "id" único (numero_ano) e historico vazio para cada NF vinda do backend
 function normalizarNotas() {
+  // Aplicar validações definitivas (aprovadas/recusadas nesta sessão)
+  // Impede que o GAS com cache sobrescreva decisões já tomadas
+  notas.forEach(n => {
+    if (_validacoesDefinitivas[n.id]) {
+      n.validacao = _validacoesDefinitivas[n.id];
+    }
+  });
   notas.forEach(n => {
     n.id = n.numero + '_' + n.ano;
     if (!n.historico) n.historico = [];
@@ -2253,19 +2263,19 @@ async function aprovarNF(nfId) {
   if(!nf) return;
   const anterior = nf.validacao;
 
-  // Some IMEDIATAMENTE sem esperar nada
+  // Registra na lista negra ANTES de tudo — proteção permanente nesta sessão
+  _validacoesDefinitivas[nfId] = 'VALIDADO';
   nf.validacao = 'VALIDADO';
   filterAprovacao();
   renderNotas();
 
-  // Envia ao GAS sem bloquear UI e SEM reload (reload sobrescreveria)
   apiCall('aprovarNota', {numero: nf.numero, ano: nf.ano}).then(res=>{
     if(!res.ok){
+      delete _validacoesDefinitivas[nfId]; // remove da lista negra se falhou
       nf.validacao = anterior;
       filterAprovacao(); renderNotas();
       alert('Erro ao aprovar: '+(res.erro||''));
     }
-    // Sucesso: não faz reload — a tela já está correta
   });
 }
 
@@ -2276,19 +2286,20 @@ async function recusarNF(nfId) {
   if(!motivo||!motivo.trim()) return;
   const anterior = nf.validacao;
 
-  // Some IMEDIATAMENTE sem esperar nada
-  nf.validacao = 'RECUSADO: '+motivo.trim();
+  const novaValidacao = 'RECUSADO: '+motivo.trim();
+  // Registra na lista negra ANTES de tudo — proteção permanente nesta sessão
+  _validacoesDefinitivas[nfId] = novaValidacao;
+  nf.validacao = novaValidacao;
   filterAprovacao();
   renderNotas();
 
-  // Envia ao GAS sem bloquear UI e SEM reload
   apiCall('recusarNota', {numero: nf.numero, ano: nf.ano, motivo: motivo.trim()}).then(res=>{
     if(!res.ok){
+      delete _validacoesDefinitivas[nfId]; // remove da lista negra se falhou
       nf.validacao = anterior;
       filterAprovacao(); renderNotas();
       alert('Erro ao recusar: '+(res.erro||''));
     }
-    // Sucesso: não faz reload — a tela já está correta
   });
 }
 
