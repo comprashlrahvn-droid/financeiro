@@ -1284,22 +1284,23 @@ async function reloadNotas(silencioso=false) {
 
 // Garante um "id" único (numero_ano) e historico vazio para cada NF vinda do backend
 function normalizarNotas() {
-  // Aplicar validações definitivas (aprovadas/recusadas nesta sessão)
-  // Impede que o GAS com cache sobrescreva decisões já tomadas
-  notas.forEach(n => {
-    if (_validacoesDefinitivas[n.id]) {
-      n.validacao = _validacoesDefinitivas[n.id];
-    }
-  });
+  // PASSO 1: definir n.id primeiro
   notas.forEach(n => {
     n.id = n.numero + '_' + n.ano;
     if (!n.historico) n.historico = [];
   });
+  // PASSO 2: aplicar validações definitivas DEPOIS que n.id já existe
+  notas.forEach(n => {
+    const chaveNum = n.numero + '_' + n.ano;
+    if (_validacoesDefinitivas[n.id] || _validacoesDefinitivas[chaveNum]) {
+      n.validacao = _validacoesDefinitivas[n.id] || _validacoesDefinitivas[chaveNum];
+    }
+  });
+  // Atualiza badge de aprovações pendentes na sidebar
+  const pending = notas.filter(n=>(n.validacao||'').toUpperCase().includes('AGUARDANDO')).length;
+  const badgeA = document.getElementById('badgeAprov');
+  if(badgeA){ badgeA.textContent=pending; badgeA.style.display=pending>0?'':'none'; }
 }
-
-// ====================================================
-// AUTH
-// ====================================================
 async function doLogin() {
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value.trim();
@@ -2194,19 +2195,29 @@ function filterAprovacao() {
 
   const lista = notas.filter(nf => {
     if (anoFilt && nf.ano !== anoFilt) return false;
+
+    // Lista negra: notas aprovadas/recusadas nesta sessão nunca aparecem em AGUARDANDO
+    const idNF = nf.id || (nf.numero + '_' + nf.ano);
+    if (_validacoesDefinitivas[idNF]) {
+      const vDef = String(_validacoesDefinitivas[idNF]).toUpperCase();
+      // Se tem decisão definitiva e não é AGUARDANDO, exclui do filtro padrão
+      if ((!stFilt || stFilt === 'AGUARDANDO') && vDef.indexOf('AGUARDANDO') === -1) {
+        return false;
+      }
+    }
+
     const valid = String(nf.validacao||'').toUpperCase();
 
-    // Padrão e 'AGUARDANDO': só mostra notas aguardando — exclui explicitamente recusadas e validadas
     if (!stFilt || stFilt === 'AGUARDANDO') {
       if (valid.indexOf('AGUARDANDO') === -1) return false;
-      if (valid.indexOf('RECUSADO')   !== -1) return false; // dupla garantia
-      if (valid === 'VALIDADO')               return false; // dupla garantia
+      if (valid.indexOf('RECUSADO')   !== -1) return false;
+      if (valid === 'VALIDADO')               return false;
     } else if (stFilt === 'VALIDADO') {
       if (valid !== 'VALIDADO') return false;
     } else if (stFilt === 'RECUSADO') {
       if (valid.indexOf('RECUSADO') === -1) return false;
     }
-    // stFilt === 'TODAS' — não filtra por validação
+    // stFilt === 'TODAS' — sem filtro por validação
 
     if (q && !(nf.numero+' '+nf.fornecedor+' '+(nf.cnpj||'')).toLowerCase().includes(q)) return false;
     return true;
