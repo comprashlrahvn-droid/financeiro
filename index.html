@@ -1052,9 +1052,23 @@ input[type=date]{color-scheme:light}
 const MASTER_EMAIL = window.MASTER_EMAIL = 'comprashlr.ahvn@gmail.com';
 let currentUser = null;
 let notas = [];
-// Lista negra local: NFs que foram aprovadas/recusadas nesta sessão
-// Persiste mesmo após reloadNotas para que nunca reapareçam na fila
-const _validacoesDefinitivas = {}; // { nfId: 'VALIDADO' | 'RECUSADO: motivo' }
+// Lista negra: NFs aprovadas/recusadas — persiste no localStorage entre reloads de página
+const _validacoesDefinitivas = JSON.parse(localStorage.getItem('nf_validacoes') || '{}');
+function _salvarValidacoes() {
+  localStorage.setItem('nf_validacoes', JSON.stringify(_validacoesDefinitivas));
+}
+// Limpar validações com mais de 30 dias (limpeza automática)
+(function() {
+  const agora = Date.now();
+  let alterado = false;
+  Object.keys(_validacoesDefinitivas).forEach(k => {
+    const v = _validacoesDefinitivas[k];
+    if (v && v._ts && agora - v._ts > 30 * 24 * 60 * 60 * 1000) {
+      delete _validacoesDefinitivas[k]; alterado = true;
+    }
+  });
+  if (alterado) _salvarValidacoes();
+})();
 let fornecedores = [];
 let notasPag = 1;
 const PER_PAGE = 20;
@@ -1238,6 +1252,7 @@ function trocarPlanilha() {
 // ====================================================
 async function loadData() {
   setSyncBadge('sync');
+  // Todas as chamadas em paralelo — reduz tempo total pela metade
   const promises = [
     apiCall('listarNotas', {}),
     apiCall('listarFornecedores', {})
@@ -1260,23 +1275,10 @@ async function loadData() {
 // Recarrega só as notas (após salvar/editar/aprovar etc)
 async function reloadNotas(silencioso=false) {
   if(!silencioso) setSyncBadge('sync');
-  // Salvar validações já aplicadas localmente antes do reload
-  const validacoesLocais = {};
-  notas.forEach(n => {
-    const v = String(n.validacao||'').toUpperCase();
-    // Preservar apenas validações que já foram definidas (não AGUARDANDO)
-    if(v !== 'AGUARDANDO VALIDAÇÃO' && v.indexOf('AGUARDANDO') === -1) {
-      validacoesLocais[n.id] = n.validacao;
-    }
-  });
   const res = await apiCall('listarNotas', {});
   if(res.ok){
     notas = res.notas;
-    normalizarNotas();
-    // Restaurar validações locais que o GAS ainda não confirmou
-    notas.forEach(n => {
-      if(validacoesLocais[n.id]) n.validacao = validacoesLocais[n.id];
-    });
+    normalizarNotas(); // aplica _validacoesDefinitivas do localStorage automaticamente
   }
   setSyncBadge(res.ok ? 'ok' : 'erro');
   return res.ok;
@@ -1292,8 +1294,9 @@ function normalizarNotas() {
   // PASSO 2: aplicar validações definitivas DEPOIS que n.id já existe
   notas.forEach(n => {
     const chaveNum = n.numero + '_' + n.ano;
-    if (_validacoesDefinitivas[n.id] || _validacoesDefinitivas[chaveNum]) {
-      n.validacao = _validacoesDefinitivas[n.id] || _validacoesDefinitivas[chaveNum];
+    const vDef = _validacoesDefinitivas[n.id] || _validacoesDefinitivas[chaveNum];
+    if (vDef) {
+      n.validacao = typeof vDef === 'string' ? vDef : vDef.val;
     }
   });
   // Atualiza badge de aprovações pendentes na sidebar
@@ -1947,17 +1950,36 @@ async function salvarNF() {
   const btn = document.getElementById('btnSalvarNF');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
 
-  const res = await apiCall('salvarNota', { nota: JSON.stringify(nfData) });
+  // Atualização LOCAL imediata — fecha o modal SEM esperar o GAS
+  const idLocal = nfData.numero + '_' + nfData.ano;
+  const idxLocal = notas.findIndex(x=>x.id===idLocal);
+  const nfLocal = { ...nfData, id:idLocal, historico:[] };
+  if(idxLocal>=0) notas[idxLocal]=nfLocal; else notas.unshift(nfLocal);
+  normalizarNotas();
 
   btn.disabled = false; btn.textContent = '💾 Salvar NF';
-
-  if (!res.ok) { alert('Erro ao salvar: ' + (res.erro || 'desconhecido')); return; }
-
-  await reloadNotas();
   closeModal('modalNF');
   renderNotas();
   if (currentUser.role === 'admin') renderDashboard();
-  editingNFId=null;
+  editingNFId = null;
+
+  // Envia ao GAS em background sem bloquear UI
+  const _nfDataCopy = {...nfData};
+  apiCall('salvarNota', { nota: JSON.stringify(_nfDataCopy) }).then(res => {
+    if (!res.ok) {
+      setSyncBadge('erro');
+      // Retry automático após 3s
+      setTimeout(() => {
+        apiCall('salvarNota', { nota: JSON.stringify(_nfDataCopy) }).then(r2 => {
+          if (r2.ok) { setSyncBadge('ok'); reloadNotas(true); }
+          else alert('Erro ao salvar NF no servidor: ' + (r2.erro||''));
+        });
+      }, 3000);
+    } else {
+      setSyncBadge('ok');
+      reloadNotas(true);
+    }
+  });
 }
 
 // ====================================================
@@ -2199,7 +2221,8 @@ function filterAprovacao() {
     // Lista negra: notas aprovadas/recusadas nesta sessão nunca aparecem em AGUARDANDO
     const idNF = nf.id || (nf.numero + '_' + nf.ano);
     if (_validacoesDefinitivas[idNF]) {
-      const vDef = String(_validacoesDefinitivas[idNF]).toUpperCase();
+      const _raw = _validacoesDefinitivas[idNF];
+      const vDef = String(typeof _raw === 'string' ? _raw : (_raw.val||'')).toUpperCase();
       // Se tem decisão definitiva e não é AGUARDANDO, exclui do filtro padrão
       if ((!stFilt || stFilt === 'AGUARDANDO') && vDef.indexOf('AGUARDANDO') === -1) {
         return false;
@@ -2276,13 +2299,14 @@ async function aprovarNF(nfId) {
 
   // Registra na lista negra ANTES de tudo — proteção permanente nesta sessão
   _validacoesDefinitivas[nfId] = 'VALIDADO';
+  _salvarValidacoes();
   nf.validacao = 'VALIDADO';
   filterAprovacao();
   renderNotas();
 
   apiCall('aprovarNota', {numero: nf.numero, ano: nf.ano}).then(res=>{
     if(!res.ok){
-      delete _validacoesDefinitivas[nfId]; // remove da lista negra se falhou
+      delete _validacoesDefinitivas[nfId]; _salvarValidacoes(); // remove da lista negra se falhou
       nf.validacao = anterior;
       filterAprovacao(); renderNotas();
       alert('Erro ao aprovar: '+(res.erro||''));
@@ -2300,6 +2324,7 @@ async function recusarNF(nfId) {
   const novaValidacao = 'RECUSADO: '+motivo.trim();
   // Registra na lista negra ANTES de tudo — proteção permanente nesta sessão
   _validacoesDefinitivas[nfId] = novaValidacao;
+  _salvarValidacoes();
   nf.validacao = novaValidacao;
   filterAprovacao();
   renderNotas();
