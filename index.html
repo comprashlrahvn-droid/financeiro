@@ -442,8 +442,28 @@ input[type=date]{color-scheme:light}
         </div>
       </div>
       <div class="kpi-grid" id="kpiGrid"></div>
-      <!-- KPIs Tempo Médio -->
+      <!-- KPIs Tempo Médio Geral -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px" id="kpiTempoPag"></div>
+
+      <!-- KPI Tempo Médio por Fornecedor -->
+      <div class="chart-card" style="margin-bottom:24px;border-top:3px solid #6366f1">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="chart-title" style="margin:0">⏱️ Tempo Médio de Pagamento por Fornecedor</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">Dias médios entre vencimento e pagamento — apenas parcelas pagas</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="font-size:11px;color:var(--muted);font-weight:700">Período:</label>
+            <select id="filtTempoPagFornMes" onchange="renderKpiTempoPorFornecedor()"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font)">
+              <option value="all">Todo o histórico</option>
+            </select>
+          </div>
+        </div>
+        <div id="kpiTempoPorFornecedor">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aguardando dados...</div>
+        </div>
+      </div>
 
       <div class="charts-grid">
         <div class="chart-card">
@@ -1250,9 +1270,17 @@ function trocarPlanilha() {
 // ====================================================
 // CARREGAMENTO DE DADOS (via API)
 // ====================================================
-async function loadData() {
+let _cacheTs = 0; // timestamp do último carregamento
+const _CACHE_TTL = 3 * 60 * 1000; // 3 minutos
+
+async function loadData(forcar=false) {
+  // Usar cache se dados foram carregados recentemente
+  if (!forcar && notas.length > 0 && (Date.now() - _cacheTs) < _CACHE_TTL) {
+    setSyncBadge('ok');
+    return;
+  }
   setSyncBadge('sync');
-  // Todas as chamadas em paralelo — reduz tempo total pela metade
+  // Todas as chamadas em PARALELO — reduz tempo pela metade
   const promises = [
     apiCall('listarNotas', {}),
     apiCall('listarFornecedores', {})
@@ -1262,11 +1290,15 @@ async function loadData() {
   }
   const results = await Promise.all(promises);
   const [resNotas, resForn] = results;
-  notas = resNotas.ok ? resNotas.notas : [];
-  fornecedores = resForn.ok ? resForn.fornecedores : [];
+  if (resNotas.ok) {
+    notas = resNotas.notas;
+    _cacheTs = Date.now();
+  }
+  if (resForn.ok) fornecedores = resForn.fornecedores;
   if (results[2] && results[2].ok) {
-    window._totalJurosGAS = results[2].totalJuros || 0;
-    window._totalMultaGAS = results[2].totalMulta || 0;
+    window._totalJurosGAS    = results[2].totalJuros  || 0;
+    window._totalMultaGAS    = results[2].totalMulta  || 0;
+    window._acrescimosGAS    = results[2].registros   || [];
   }
   normalizarNotas();
   setSyncBadge(resNotas.ok && resForn.ok ? 'ok' : 'erro');
@@ -1360,7 +1392,7 @@ async function doLogin() {
   }
 
   setSyncBadge('sync');
-  await loadData();
+  await loadData(true); // força refresh ignorando cache
   populateSelects();
   popularSelectsContas();
   normalizarNotas();
@@ -2738,6 +2770,19 @@ function renderDashboard() {
   }
   renderKpiAcrescimos(Object.entries(aMap).filter(([,v])=>v.total>0).sort((a,b)=>b[1].total-a[1].total).slice(0,10));
 
+  // Popular select de mês do KPI por fornecedor e renderizar
+  const selTPF = document.getElementById('filtTempoPagFornMes');
+  if(selTPF){
+    const curTPF = selTPF.value||'all';
+    selTPF.innerHTML = '<option value="all">Todo o histórico</option>' +
+      mesesDisp.map(m=>{
+        const [y,mo]=m.split('-');
+        return `<option value="${m}">${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]}/${y.slice(2)}</option>`;
+      }).join('');
+    selTPF.value = curTPF;
+  }
+  renderKpiTempoPorFornecedor();
+
   // Alertas
   const alertSec=document.getElementById('alertasSection');
   if(alertSec){
@@ -2760,6 +2805,90 @@ function renderDashboard() {
   }
 }
 
+
+function renderKpiTempoPorFornecedor() {
+  const el = document.getElementById('kpiTempoPorFornecedor');
+  if(!el) return;
+
+  const mes = document.getElementById('filtTempoPagFornMes')?.value || 'all';
+
+  // Calcular tempo médio por fornecedor
+  const fornMap = {}; // { fornecedor: { somaAtraso, count, pagasNoDia, total } }
+
+  notas.forEach(nf => {
+    const fn = nf.fornecedor || '—';
+    (nf.parcelas||[]).forEach(p => {
+      const sit = String(p.situacao||'').toUpperCase();
+      if(sit !== 'PAGO') return;
+      if(!p.vencimento || !p.dataPagamento) return;
+      // Filtrar por mês de pagamento se selecionado
+      if(mes !== 'all' && p.dataPagamento.slice(0,7) !== mes) return;
+      const v = new Date(p.vencimento.slice(0,10)+'T00:00:00');
+      const g = new Date(p.dataPagamento.slice(0,10)+'T00:00:00');
+      if(isNaN(v)||isNaN(g)) return;
+      const dias = Math.floor((g-v)/86400000);
+      if(!fornMap[fn]) fornMap[fn]={somaAtraso:0,countAtraso:0,pagasNoDia:0,total:0};
+      fornMap[fn].total++;
+      if(dias<=0) fornMap[fn].pagasNoDia++;
+      else { fornMap[fn].somaAtraso+=dias; fornMap[fn].countAtraso++; }
+    });
+  });
+
+  const lista = Object.entries(fornMap)
+    .filter(([,v])=>v.total>0)
+    .map(([fn,v])=>({
+      fn,
+      media:  v.countAtraso>0 ? Math.round(v.somaAtraso/v.countAtraso) : 0,
+      pctDia: Math.round((v.pagasNoDia/v.total)*100),
+      total:  v.total,
+      atrasadas: v.countAtraso,
+    }))
+    .sort((a,b)=>b.media-a.media); // pior desempenho primeiro
+
+  if(!lista.length){
+    el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">⏳ Nenhuma parcela paga registrada no período selecionado.</div>`;
+    return;
+  }
+
+  const maxMedia = Math.max(...lista.map(x=>x.media), 1);
+
+  el.innerHTML = `<div style="overflow-x:auto"><table class="tbl">
+    <thead><tr>
+      <th>#</th><th>Fornecedor</th>
+      <th style="text-align:center">Total Pagas</th>
+      <th style="text-align:center">No Prazo</th>
+      <th style="text-align:center">% no Prazo</th>
+      <th style="text-align:center">Atraso Médio</th>
+      <th>Desempenho</th>
+    </tr></thead>
+    <tbody>${lista.map((x,i)=>{
+      const pct = maxMedia>0 ? Math.round((x.media/maxMedia)*100) : 0;
+      const cor = x.media===0?'#16a34a':x.media<=7?'#d97706':'#dc2626';
+      const rank = i===0&&x.media>0?'🔴':i===1&&x.media>0?'🟠':i===2&&x.media>0?'🟡':'';
+      return `<tr>
+        <td style="text-align:center;font-size:12px;color:var(--muted)">${rank||'#'+(i+1)}</td>
+        <td><strong>${x.fn}</strong></td>
+        <td style="text-align:center">${x.total}</td>
+        <td style="text-align:center;color:#16a34a;font-weight:600">${x.total-x.atrasadas}</td>
+        <td style="text-align:center"><span style="background:${x.pctDia>=80?'#d1fae5':x.pctDia>=50?'#fef3c7':'#fee2e2'};color:${x.pctDia>=80?'#065f46':x.pctDia>=50?'#78350f':'#7f1d1d'};padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">${x.pctDia}%</span></td>
+        <td style="text-align:center"><span style="background:${x.media===0?'#d1fae5':x.media<=7?'#fef3c7':'#fee2e2'};color:${cor};padding:3px 10px;border-radius:20px;font-weight:800;font-family:monospace;font-size:13px">${x.media===0?'✓ Em dia':'+'+x.media+'d'}</span></td>
+        <td style="min-width:120px;padding-right:8px">
+          <div style="background:#f3f4f6;border-radius:6px;height:8px;overflow:hidden">
+            <div style="background:${cor};height:8px;width:${pct}%;border-radius:6px;transition:width .5s"></div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+    <tfoot><tr style="background:#f7faf8;font-weight:700">
+      <td colspan="2" style="color:var(--muted)">MÉDIA GERAL</td>
+      <td style="text-align:center">${lista.reduce((s,x)=>s+x.total,0)}</td>
+      <td style="text-align:center;color:#16a34a">${lista.reduce((s,x)=>s+(x.total-x.atrasadas),0)}</td>
+      <td style="text-align:center">${Math.round(lista.reduce((s,x)=>s+x.pctDia,0)/lista.length)}%</td>
+      <td style="text-align:center;font-family:monospace">${lista.every(x=>x.media===0)?'✓ Em dia':'+'+Math.round(lista.reduce((s,x)=>s+x.media,0)/lista.length)+'d'}</td>
+      <td></td>
+    </tr></tfoot>
+  </table></div>`;
+}
 
 function renderKpiAcrescimos(lista) {
   const el = document.getElementById('kpiAcrescimos');
