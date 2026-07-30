@@ -461,6 +461,12 @@ input[type=date]{color-scheme:light}
           </div>
         </div>
         <div id="kpiTempoPorFornecedor">
+          <div style="padding:12px 0 16px">
+            <input type="text" id="buscaTempoPagForn"
+              placeholder="🔍 Buscar fornecedor..."
+              oninput="renderKpiTempoPorFornecedor()"
+              style="width:100%;max-width:380px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text)">
+          </div>
           <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aguardando dados...</div>
         </div>
       </div>
@@ -2810,84 +2816,144 @@ function renderKpiTempoPorFornecedor() {
   const el = document.getElementById('kpiTempoPorFornecedor');
   if(!el) return;
 
-  const mes = document.getElementById('filtTempoPagFornMes')?.value || 'all';
+  const mes   = document.getElementById('filtTempoPagFornMes')?.value || 'all';
+  const busca = (document.getElementById('buscaTempoPagForn')?.value||'').toLowerCase().trim();
 
-  // Calcular tempo médio por fornecedor
-  const fornMap = {}; // { fornecedor: { somaAtraso, count, pagasNoDia, total } }
+  // Calcular por fornecedor — baseado em parcelas individuais
+  // Cada parcela tem: vencimento e dataPagamento
+  // diasAtraso = dataPagamento - vencimento (em dias)
+  // Se negativo = pago antes, se positivo = pago após o vencimento
+  const fornMap = {};
 
   notas.forEach(nf => {
     const fn = nf.fornecedor || '—';
-    (nf.parcelas||[]).forEach(p => {
+    (nf.parcelas||[]).forEach((p, pi) => {
       const sit = String(p.situacao||'').toUpperCase();
-      if(sit !== 'PAGO') return;
-      if(!p.vencimento || !p.dataPagamento) return;
+      if(sit !== 'PAGO') return;                          // só parcelas pagas
+      if(!p.vencimento || !p.dataPagamento) return;       // precisa das duas datas
+
       // Filtrar por mês de pagamento se selecionado
       if(mes !== 'all' && p.dataPagamento.slice(0,7) !== mes) return;
-      const v = new Date(p.vencimento.slice(0,10)+'T00:00:00');
-      const g = new Date(p.dataPagamento.slice(0,10)+'T00:00:00');
-      if(isNaN(v)||isNaN(g)) return;
-      const dias = Math.floor((g-v)/86400000);
-      if(!fornMap[fn]) fornMap[fn]={somaAtraso:0,countAtraso:0,pagasNoDia:0,total:0};
-      fornMap[fn].total++;
-      if(dias<=0) fornMap[fn].pagasNoDia++;
-      else { fornMap[fn].somaAtraso+=dias; fornMap[fn].countAtraso++; }
+
+      const venc = new Date(p.vencimento.slice(0,10)    + 'T00:00:00');
+      const pag  = new Date(p.dataPagamento.slice(0,10) + 'T00:00:00');
+      if(isNaN(venc) || isNaN(pag)) return;
+
+      // Dias de diferença: positivo = atrasado, negativo = adiantado, 0 = no dia
+      const dias = Math.floor((pag - venc) / 86400000);
+
+      if(!fornMap[fn]) fornMap[fn] = {
+        totalParcelas: 0,
+        pagasNoDia: 0,
+        pagasAtrasadas: 0,
+        somaAtraso: 0,     // soma dos dias de atraso (só positivos)
+        somaDias: 0,       // soma total (incluindo negativos)
+        nfs: new Set()
+      };
+
+      fornMap[fn].totalParcelas++;
+      fornMap[fn].somaDias += dias;
+      fornMap[fn].nfs.add(nf.numero);
+
+      if(dias <= 0) {
+        fornMap[fn].pagasNoDia++;           // pago no prazo ou antecipado
+      } else {
+        fornMap[fn].pagasAtrasadas++;
+        fornMap[fn].somaAtraso += dias;     // acumula só os dias de atraso reais
+      }
     });
   });
 
-  const lista = Object.entries(fornMap)
-    .filter(([,v])=>v.total>0)
-    .map(([fn,v])=>({
+  // Montar lista — média de atraso = somaAtraso / pagasAtrasadas (só das atrasadas)
+  let lista = Object.entries(fornMap)
+    .filter(([,v]) => v.totalParcelas > 0)
+    .map(([fn, v]) => ({
       fn,
-      media:  v.countAtraso>0 ? Math.round(v.somaAtraso/v.countAtraso) : 0,
-      pctDia: Math.round((v.pagasNoDia/v.total)*100),
-      total:  v.total,
-      atrasadas: v.countAtraso,
+      totalParcelas: v.totalParcelas,
+      pagasNoDia:    v.pagasNoDia,
+      pagasAtrasadas:v.pagasAtrasadas,
+      // Atraso médio: media das parcelas que foram pagas após o vencimento
+      mediaAtraso: v.pagasAtrasadas > 0 ? Math.round(v.somaAtraso / v.pagasAtrasadas) : 0,
+      // Média geral: considera todas as parcelas (incluindo adiantadas)
+      mediaGeral: Math.round(v.somaDias / v.totalParcelas),
+      pctNoDia: Math.round((v.pagasNoDia / v.totalParcelas) * 100),
+      qtdNFs: v.nfs.size,
     }))
-    .sort((a,b)=>b.media-a.media); // pior desempenho primeiro
+    .sort((a,b) => b.mediaAtraso - a.mediaAtraso);
 
-  if(!lista.length){
-    el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">⏳ Nenhuma parcela paga registrada no período selecionado.</div>`;
+  // Aplicar busca
+  if(busca) lista = lista.filter(x => x.fn.toLowerCase().includes(busca));
+
+  if(!lista.length) {
+    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">
+      ${busca ? '🔍 Nenhum fornecedor encontrado para "'+busca+'".' : '⏳ Nenhuma parcela paga no período selecionado.'}
+    </div>`;
     return;
   }
 
-  const maxMedia = Math.max(...lista.map(x=>x.media), 1);
+  const maxAtraso = Math.max(...lista.map(x=>x.mediaAtraso), 1);
+  const totalParcelas = lista.reduce((s,x)=>s+x.totalParcelas,0);
+  const totalNoDia    = lista.reduce((s,x)=>s+x.pagasNoDia,0);
+  const totalAtrasadas= lista.reduce((s,x)=>s+x.pagasAtrasadas,0);
+  const mediaGeralPct = Math.round((totalNoDia/totalParcelas)*100);
+  const mediaGeralDias= totalAtrasadas>0 ? Math.round(lista.reduce((s,x)=>s+x.somaAtraso,0)/totalAtrasadas) : 0;
 
-  el.innerHTML = `<div style="overflow-x:auto"><table class="tbl">
-    <thead><tr>
-      <th>#</th><th>Fornecedor</th>
-      <th style="text-align:center">Total Pagas</th>
-      <th style="text-align:center">No Prazo</th>
-      <th style="text-align:center">% no Prazo</th>
-      <th style="text-align:center">Atraso Médio</th>
-      <th>Desempenho</th>
-    </tr></thead>
-    <tbody>${lista.map((x,i)=>{
-      const pct = maxMedia>0 ? Math.round((x.media/maxMedia)*100) : 0;
-      const cor = x.media===0?'#16a34a':x.media<=7?'#d97706':'#dc2626';
-      const rank = i===0&&x.media>0?'🔴':i===1&&x.media>0?'🟠':i===2&&x.media>0?'🟡':'';
-      return `<tr>
-        <td style="text-align:center;font-size:12px;color:var(--muted)">${rank||'#'+(i+1)}</td>
-        <td><strong>${x.fn}</strong></td>
-        <td style="text-align:center">${x.total}</td>
-        <td style="text-align:center;color:#16a34a;font-weight:600">${x.total-x.atrasadas}</td>
-        <td style="text-align:center"><span style="background:${x.pctDia>=80?'#d1fae5':x.pctDia>=50?'#fef3c7':'#fee2e2'};color:${x.pctDia>=80?'#065f46':x.pctDia>=50?'#78350f':'#7f1d1d'};padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">${x.pctDia}%</span></td>
-        <td style="text-align:center"><span style="background:${x.media===0?'#d1fae5':x.media<=7?'#fef3c7':'#fee2e2'};color:${cor};padding:3px 10px;border-radius:20px;font-weight:800;font-family:monospace;font-size:13px">${x.media===0?'✓ Em dia':'+'+x.media+'d'}</span></td>
-        <td style="min-width:120px;padding-right:8px">
-          <div style="background:#f3f4f6;border-radius:6px;height:8px;overflow:hidden">
-            <div style="background:${cor};height:8px;width:${pct}%;border-radius:6px;transition:width .5s"></div>
-          </div>
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:36px">#</th>
+        <th>Fornecedor</th>
+        <th style="text-align:center">NFs</th>
+        <th style="text-align:center">Parcelas Pagas</th>
+        <th style="text-align:center">No Prazo</th>
+        <th style="text-align:center">Com Atraso</th>
+        <th style="text-align:center">% no Prazo</th>
+        <th style="text-align:center">Atraso Médio</th>
+        <th>Proporção</th>
+      </tr></thead>
+      <tbody>${lista.map((x,i)=>{
+        const pct = maxAtraso>0 ? Math.round((x.mediaAtraso/maxAtraso)*100) : 0;
+        const cor = x.mediaAtraso===0?'#16a34a':x.mediaAtraso<=15?'#d97706':'#dc2626';
+        const rank = i===0&&x.mediaAtraso>0?'🔴':i===1&&x.mediaAtraso>0?'🟠':i===2&&x.mediaAtraso>0?'🟡':`<span style="color:var(--muted);font-size:11px">#${i+1}</span>`;
+        return `<tr>
+          <td style="text-align:center">${rank}</td>
+          <td><strong>${x.fn}</strong><div style="font-size:10px;color:var(--muted)">${x.qtdNFs} NF(s)</div></td>
+          <td style="text-align:center;font-size:12px">${x.qtdNFs}</td>
+          <td style="text-align:center;font-weight:600">${x.totalParcelas}</td>
+          <td style="text-align:center;color:#16a34a;font-weight:600">${x.pagasNoDia}</td>
+          <td style="text-align:center;color:#dc2626;font-weight:600">${x.pagasAtrasadas}</td>
+          <td style="text-align:center">
+            <span style="background:${x.pctNoDia>=80?'#d1fae5':x.pctNoDia>=50?'#fef3c7':'#fee2e2'};color:${x.pctNoDia>=80?'#065f46':x.pctNoDia>=50?'#78350f':'#7f1d1d'};padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">${x.pctNoDia}%</span>
+          </td>
+          <td style="text-align:center">
+            <span style="background:${x.mediaAtraso===0?'#d1fae5':x.mediaAtraso<=15?'#fef3c7':'#fee2e2'};color:${cor};padding:3px 10px;border-radius:20px;font-weight:800;font-family:monospace;font-size:13px">
+              ${x.mediaAtraso===0?'✓ Em dia':'+'+x.mediaAtraso+'d'}
+            </span>
+          </td>
+          <td style="min-width:100px;padding-right:8px">
+            <div style="background:#f3f4f6;border-radius:4px;height:8px;overflow:hidden">
+              <div style="background:${cor};height:8px;width:${pct}%;border-radius:4px;transition:width .5s"></div>
+            </div>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr style="background:#f7faf8;font-weight:700;font-size:13px">
+        <td colspan="3" style="color:var(--muted)">TOTAIS / MÉDIA</td>
+        <td style="text-align:center">${totalParcelas}</td>
+        <td style="text-align:center;color:#16a34a">${totalNoDia}</td>
+        <td style="text-align:center;color:#dc2626">${totalAtrasadas}</td>
+        <td style="text-align:center">
+          <span style="background:${mediaGeralPct>=80?'#d1fae5':mediaGeralPct>=50?'#fef3c7':'#fee2e2'};color:${mediaGeralPct>=80?'#065f46':mediaGeralPct>=50?'#78350f':'#7f1d1d'};padding:2px 8px;border-radius:20px;font-size:12px">${mediaGeralPct}%</span>
         </td>
-      </tr>`;
-    }).join('')}</tbody>
-    <tfoot><tr style="background:#f7faf8;font-weight:700">
-      <td colspan="2" style="color:var(--muted)">MÉDIA GERAL</td>
-      <td style="text-align:center">${lista.reduce((s,x)=>s+x.total,0)}</td>
-      <td style="text-align:center;color:#16a34a">${lista.reduce((s,x)=>s+(x.total-x.atrasadas),0)}</td>
-      <td style="text-align:center">${Math.round(lista.reduce((s,x)=>s+x.pctDia,0)/lista.length)}%</td>
-      <td style="text-align:center;font-family:monospace">${lista.every(x=>x.media===0)?'✓ Em dia':'+'+Math.round(lista.reduce((s,x)=>s+x.media,0)/lista.length)+'d'}</td>
-      <td></td>
-    </tr></tfoot>
-  </table></div>`;
+        <td style="text-align:center">
+          <span style="font-family:monospace;color:${mediaGeralDias===0?'#16a34a':mediaGeralDias<=15?'#d97706':'#dc2626'};font-weight:800">
+            ${mediaGeralDias===0?'✓ Em dia':'+'+mediaGeralDias+'d'}
+          </span>
+        </td>
+        <td></td>
+      </tr></tfoot>
+    </table></div>`;
 }
 
 function renderKpiAcrescimos(lista) {
