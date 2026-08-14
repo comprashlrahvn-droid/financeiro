@@ -1198,7 +1198,7 @@ function adicionarContaUI(){
 // ====================================================
 // CONEXÃO COM A PLANILHA (Google Apps Script)
 // ====================================================
-let GAS_URL = localStorage.getItem('nf_gas_url') || 'https://script.google.com/macros/s/AKfycbzlkaQxiFwYp7FAacHFP0NRg_lFJOLeklFaKNQi7vMmCgUpmEM-tMYlnd6heAnJ5KYI/exec';
+let GAS_URL = localStorage.getItem('nf_gas_url') || 'https://script.google.com/macros/s/AKfycbwTFSH_SkJ0aB9eRqPlZaClch-QALlxTQ8l7eLZKDnKtrAL83BRbMONhe9VqMPqxap7/exec';
 let authToken = localStorage.getItem('nf_token') || '';
 
 // Chama o backend (GAS). method='GET' para ações de leitura simples,
@@ -1206,7 +1206,7 @@ let authToken = localStorage.getItem('nf_token') || '';
 async function apiCall(acao, params) {
   params = params || {};
   params.acao   = acao;
-  params._t     = Date.now(); // cache-busting — força dados frescos do GAS
+  params._t     = Date.now();
   if (authToken) params.token = authToken;
 
   const controller = new AbortController();
@@ -1220,14 +1220,28 @@ async function apiCall(acao, params) {
       signal:  controller.signal
     });
     clearTimeout(timer);
-    const data = await resp.json();
+
+    // Verificar se a resposta é JSON válido antes de parsear
+    const texto = await resp.text();
+    if (texto.trim().startsWith('<')) {
+      // GAS retornou HTML — URL expirada, erro de permissão ou cota esgotada
+      console.error('GAS retornou HTML:', texto.slice(0,200));
+      if (resp.status === 401 || resp.status === 403) {
+        return { ok: false, erro: '🔒 Sem permissão. Verifique se o script está publicado como "Qualquer pessoa".' };
+      }
+      return { ok: false, erro: '⚠️ A URL do Apps Script pode ter expirado. Acesse o GAS, clique em Implantar → Gerenciar implantações → e atualize a URL no sistema.' };
+    }
+
+    const data = JSON.parse(texto);
     if (data.expirado) { alert('Sessão expirada. Faça login novamente.'); doLogout(); }
     return data;
   } catch (e) {
     clearTimeout(timer);
-    return { ok: false, erro: e.name === 'AbortError'
-      ? 'Tempo limite (55s). A operação pode ter sido concluída — clique em Atualizar para verificar.'
-      : 'Falha de conexão: ' + e.message };
+    if (e.name === 'AbortError')
+      return { ok: false, erro: '⏱️ Tempo limite (55s). A operação pode ter sido concluída — clique em Atualizar para verificar.' };
+    if (e instanceof SyntaxError)
+      return { ok: false, erro: '⚠️ Resposta inválida do servidor. Verifique se a URL do GAS está correta e a implantação está ativa.' };
+    return { ok: false, erro: '📡 Falha de conexão: ' + e.message };
   }
 }
 
