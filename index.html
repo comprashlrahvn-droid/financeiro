@@ -988,10 +988,6 @@ input[type=date]{color-scheme:light}
             style="opacity:.7;cursor:not-allowed">
         </div>
         <div class="form-group">
-          <label>Valor Pago (R$) *</label>
-          <input type="text" id="baixarValor" placeholder="0,00" oninput="calcularAcrescimos()">
-        </div>
-        <div class="form-group">
           <label>Juros pagos (R$)</label>
           <input type="text" id="baixarJuros" placeholder="0,00" oninput="calcularAcrescimos()">
         </div>
@@ -1000,6 +996,8 @@ input[type=date]{color-scheme:light}
           <input type="text" id="baixarMulta" placeholder="0,00" oninput="calcularAcrescimos()">
         </div>
       </div>
+      <!-- Valor pago é calculado automaticamente: original + juros + multa -->
+      <input type="hidden" id="baixarValor">
       <div id="baixarTotalLine" style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;justify-content:space-between;margin-bottom:12px">
         <span style="color:var(--muted)">Total efetivamente pago:</span>
         <span id="baixarTotalValor" style="font-weight:700;color:#6ee7b7">R$ 0,00</span>
@@ -1198,7 +1196,7 @@ function adicionarContaUI(){
 // ====================================================
 // CONEXÃO COM A PLANILHA (Google Apps Script)
 // ====================================================
-let GAS_URL = localStorage.getItem('nf_gas_url') || 'https://script.google.com/macros/s/AKfycbwTFSH_SkJ0aB9eRqPlZaClch-QALlxTQ8l7eLZKDnKtrAL83BRbMONhe9VqMPqxap7/exec';
+let GAS_URL = localStorage.getItem('nf_gas_url') || 'https://https://script.google.com/macros/s/AKfycbwTFSH_SkJ0aB9eRqPlZaClch-QALlxTQ8l7eLZKDnKtrAL83BRbMONhe9VqMPqxap7/exec';
 let authToken = localStorage.getItem('nf_token') || '';
 
 // Chama o backend (GAS). method='GET' para ações de leitura simples,
@@ -2187,7 +2185,9 @@ function abrirBaixar(nfId, idx) {
   document.getElementById('baixarMulta').value='';
   document.getElementById('baixarObs').value='';
   calcularAcrescimos();
+  calcularAcrescimos(); // inicializa valor pago = valor original
   openModal('modalBaixar');
+  // Fecha modal IMEDIATAMENTE ao confirmar — sem esperar GAS
 }
 
 function calcularAcrescimos() {
@@ -2198,27 +2198,73 @@ function calcularAcrescimos() {
   document.getElementById('baixarTotalValor').textContent = fmtMoney(total);
 }
 async function confirmarBaixar() {
-  const data=document.getElementById('baixarData').value;
-  const valor=document.getElementById('baixarValor').value;
-  const juros=document.getElementById('baixarJuros').value||'0';
-  const multa=document.getElementById('baixarMulta').value||'0';
-  const obs=document.getElementById('baixarObs').value;
-  if(!data||!valor){alert('Preencha data e valor.');return;}
-  const nf=notas.find(x=>x.id===baixarTarget.nfId);
+  const nf = notas.find(x=>x.id===baixarTarget.nfId);
+  if(!nf) return;
 
-  const res = await apiCall('baixarParcela', {
-    numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
-    dataPagamento: data, valorPago: valor,
-    juros: juros, multa: multa, obs: obs
+  const obs   = document.getElementById('baixarObs')?.value.trim()||'';
+  let data='', valor='', juros='0', multa='0', situacaoFinal='';
+
+  if(_tipoBaixa==='PAGO'){
+    data  = document.getElementById('baixarData').value;
+    juros = document.getElementById('baixarJuros').value||'0';
+    multa = document.getElementById('baixarMulta').value||'0';
+    if(!data){ alert('Preencha a data de pagamento.'); return; }
+    // Valor pago = original + juros + multa (calculado automaticamente)
+    const orig = parseMoney(document.getElementById('baixarValorOriginal').value||'0');
+    valor = (orig + parseMoney(juros) + parseMoney(multa)).toFixed(2).replace('.',',');
+    situacaoFinal = 'PAGO';
+  } else if(_tipoBaixa==='CANCELADO'){
+    data  = document.getElementById('baixarDataAdm')?.value || new Date().toISOString().slice(0,10);
+    valor = '0';
+    if(!obs){ alert('Informe o motivo do cancelamento.'); return; }
+    situacaoFinal = 'CANCELADO';
+  } else {
+    data  = document.getElementById('baixarDataAdm')?.value || new Date().toISOString().slice(0,10);
+    valor = '0';
+    if(!obs){ alert('Informe o motivo da baixa administrativa.'); return; }
+    situacaoFinal = 'BAIXA ADM';
+  }
+
+  // Atualização otimista LOCAL — fecha modal IMEDIATAMENTE
+  const parcela      = nf.parcelas[baixarTarget.idx];
+  const parcelaAntes = parcela ? {...parcela} : null;
+  const statusAntes  = nf.status;
+
+  if(parcela){
+    parcela.dataPagamento = data;
+    parcela.valorPago     = valor;
+    parcela.situacao      = situacaoFinal;
+  }
+  const todasEncerradas = nf.parcelas.every(p=>{
+    const s = String(p.situacao||'').toUpperCase();
+    return ['PAGO','CANCELADO','BAIXA ADM'].includes(s);
   });
-  if(!res.ok){ alert('Erro: '+(res.erro||'')); return; }
+  if(todasEncerradas) nf.status = situacaoFinal;
 
-  await reloadNotas();
+  // Fecha ANTES de qualquer chamada de rede
   closeModal('modalBaixar');
   closeModal('modalDetalheNF');
   renderNotas();
-  if (currentUser.role === 'admin') renderDashboard();
-  setTimeout(()=>verDetalheNF(baixarTarget.nfId),100);
+  if(currentUser.role==='admin') renderDashboard();
+
+  // GAS em background
+  apiCall('baixarParcela', {
+    numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
+    dataPagamento: data, valorPago: valor,
+    juros, multa,
+    obs: (_tipoBaixa!=='PAGO' ? '['+_tipoBaixa+'] ' : '') + obs,
+    situacao: situacaoFinal
+  }).then(res=>{
+    if(!res.ok){
+      if(parcela && parcelaAntes) Object.assign(parcela, parcelaAntes);
+      nf.status = statusAntes;
+      renderNotas();
+      alert('Erro ao registrar baixa: '+(res.erro||''));
+    } else {
+      if(res.novoStatus) nf.status = res.novoStatus;
+      reloadNotas(true).then(()=>setSyncBadge('ok'));
+    }
+  });
 }
 
 // ====================================================
