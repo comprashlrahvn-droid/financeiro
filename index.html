@@ -1196,7 +1196,7 @@ function adicionarContaUI(){
 // ====================================================
 // CONEXÃO COM A PLANILHA (Google Apps Script)
 // ====================================================
-let GAS_URL = localStorage.getItem('nf_gas_url') || 'https://https://script.google.com/macros/s/AKfycbwTFSH_SkJ0aB9eRqPlZaClch-QALlxTQ8l7eLZKDnKtrAL83BRbMONhe9VqMPqxap7/exec';
+let GAS_URL = localStorage.getItem('nf_gas_url') || 'https://script.google.com/macros/s/AKfycbwTFSH_SkJ0aB9eRqPlZaClch-QALlxTQ8l7eLZKDnKtrAL83BRbMONhe9VqMPqxap7/exec';
 let authToken = localStorage.getItem('nf_token') || '';
 
 // Chama o backend (GAS). method='GET' para ações de leitura simples,
@@ -2197,7 +2197,7 @@ function calcularAcrescimos() {
   const total = v + j + m;
   document.getElementById('baixarTotalValor').textContent = fmtMoney(total);
 }
-async function confirmarBaixar() {
+function confirmarBaixar() {
   const nf = notas.find(x=>x.id===baixarTarget.nfId);
   if(!nf) return;
 
@@ -2209,7 +2209,6 @@ async function confirmarBaixar() {
     juros = document.getElementById('baixarJuros').value||'0';
     multa = document.getElementById('baixarMulta').value||'0';
     if(!data){ alert('Preencha a data de pagamento.'); return; }
-    // Valor pago = original + juros + multa (calculado automaticamente)
     const orig = parseMoney(document.getElementById('baixarValorOriginal').value||'0');
     valor = (orig + parseMoney(juros) + parseMoney(multa)).toFixed(2).replace('.',',');
     situacaoFinal = 'PAGO';
@@ -2225,47 +2224,50 @@ async function confirmarBaixar() {
     situacaoFinal = 'BAIXA ADM';
   }
 
-  // Atualização otimista LOCAL — fecha modal IMEDIATAMENTE
-  const parcela      = nf.parcelas[baixarTarget.idx];
-  const parcelaAntes = parcela ? {...parcela} : null;
-  const statusAntes  = nf.status;
-
-  if(parcela){
-    parcela.dataPagamento = data;
-    parcela.valorPago     = valor;
-    parcela.situacao      = situacaoFinal;
-  }
-  const todasEncerradas = nf.parcelas.every(p=>{
-    const s = String(p.situacao||'').toUpperCase();
-    return ['PAGO','CANCELADO','BAIXA ADM'].includes(s);
-  });
-  if(todasEncerradas) nf.status = situacaoFinal;
-
-  // Fecha ANTES de qualquer chamada de rede
+  // Fecha o modal IMEDIATAMENTE — antes de qualquer processamento
   closeModal('modalBaixar');
   closeModal('modalDetalheNF');
-  renderNotas();
-  if(currentUser.role==='admin') renderDashboard();
 
-  // GAS em background
-  apiCall('baixarParcela', {
-    numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
-    dataPagamento: data, valorPago: valor,
-    juros, multa,
-    obs: (_tipoBaixa!=='PAGO' ? '['+_tipoBaixa+'] ' : '') + obs,
-    situacao: situacaoFinal
-  }).then(res=>{
-    if(!res.ok){
-      if(parcela && parcelaAntes) Object.assign(parcela, parcelaAntes);
-      nf.status = statusAntes;
-      renderNotas();
-      alert('Erro ao registrar baixa: '+(res.erro||''));
-    } else {
-      if(res.novoStatus) nf.status = res.novoStatus;
-      reloadNotas(true).then(()=>setSyncBadge('ok'));
+  // Processa em background após o browser renderizar o fechamento
+  setTimeout(() => {
+    const parcela      = nf.parcelas[baixarTarget.idx];
+    const parcelaAntes = parcela ? {...parcela} : null;
+    const statusAntes  = nf.status;
+
+    if(parcela){
+      parcela.dataPagamento = data;
+      parcela.valorPago     = valor;
+      parcela.situacao      = situacaoFinal;
     }
-  });
+    const todasEncerradas = nf.parcelas.every(p=>{
+      const s = String(p.situacao||'').toUpperCase();
+      return ['PAGO','CANCELADO','BAIXA ADM'].includes(s);
+    });
+    if(todasEncerradas) nf.status = situacaoFinal;
+
+    renderNotas();
+    if(currentUser.role==='admin') renderDashboard();
+
+    apiCall('baixarParcela', {
+      numero: nf.numero, ano: nf.ano, parcIdx: baixarTarget.idx,
+      dataPagamento: data, valorPago: valor,
+      juros, multa,
+      obs: (_tipoBaixa!=='PAGO' ? '['+_tipoBaixa+'] ' : '') + obs,
+      situacao: situacaoFinal
+    }).then(res=>{
+      if(!res.ok){
+        if(parcela && parcelaAntes) Object.assign(parcela, parcelaAntes);
+        nf.status = statusAntes;
+        renderNotas();
+        alert('Erro ao registrar baixa: '+(res.erro||''));
+      } else {
+        if(res.novoStatus) nf.status = res.novoStatus;
+        reloadNotas(true).then(()=>setSyncBadge('ok'));
+      }
+    });
+  }, 0);
 }
+
 
 // ====================================================
 // EDITAR / EXCLUIR
