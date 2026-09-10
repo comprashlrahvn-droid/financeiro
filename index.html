@@ -2224,9 +2224,11 @@ function confirmarBaixar() {
     situacaoFinal = 'BAIXA ADM';
   }
 
-  // Fecha o modal IMEDIATAMENTE — antes de qualquer processamento
-  closeModal('modalBaixar');
-  closeModal('modalDetalheNF');
+  // Força fechamento visual IMEDIATO via display — não espera nenhum JS
+  const elBaixar  = document.getElementById('modalBaixar');
+  const elDetalhe = document.getElementById('modalDetalheNF');
+  if(elBaixar)  { elBaixar.classList.remove('open');  elBaixar.style.display  = 'none'; }
+  if(elDetalhe) { elDetalhe.classList.remove('open'); elDetalhe.style.display = 'none'; }
 
   // Processa em background após o browser renderizar o fechamento
   setTimeout(() => {
