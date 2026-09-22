@@ -2174,28 +2174,50 @@ function abrirBaixar(nfId, idx) {
   baixarTarget={nfId,idx};
   const nf=notas.find(x=>x.id===nfId);
   const p=nf.parcelas[idx];
-  const valorOriginal = String(p.valor||'').replace('.',',');
+
+  // Armazena valor como número puro (sem formatação) para evitar bug de parse
+  const valorNum = parseMoney(p.valor);
+
   document.getElementById('baixarInfo').innerHTML=
     `<strong>NF #${nf.numero}</strong> — ${nf.fornecedor}<br>
-     Parcela ${idx+1} | Vencimento: <strong>${fmtDate(p.vencimento)}</strong> | Valor original: <strong>${fmtMoney(parseMoney(p.valor))}</strong>`;
+     Parcela ${idx+1} | Vencimento: <strong>${fmtDate(p.vencimento)}</strong> | Valor original: <strong>${fmtMoney(valorNum)}</strong>`;
   document.getElementById('baixarData').value=today();
-  document.getElementById('baixarValorOriginal').value=valorOriginal;
-  document.getElementById('baixarValor').value=valorOriginal;
+  // Campo original armazena número puro (ex: "4000") — sem pontos nem vírgulas
+  document.getElementById('baixarValorOriginal').value = valorNum.toString();
+  document.getElementById('baixarValor').value = valorNum.toString();
   document.getElementById('baixarJuros').value='';
   document.getElementById('baixarMulta').value='';
   document.getElementById('baixarObs').value='';
+
+  // Reset tipo baixa para Pagamento
+  _tipoBaixa='PAGO';
+  document.querySelectorAll('.btn-tipo-baixa').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btbPagamento')?.classList.add('active');
+  document.getElementById('camposPagamento').style.display='';
+  document.getElementById('camposNaoPagamento').style.display='none';
+  document.getElementById('btnConfirmarBaixar').className='btn btn-success';
+  document.getElementById('btnConfirmarBaixar').textContent='✅ Confirmar Pagamento';
+  document.getElementById('modalBaixarTitle').textContent='💰 Baixar Parcela';
+
   calcularAcrescimos();
-  calcularAcrescimos(); // inicializa valor pago = valor original
+  // Força visibilidade — remove display:none que pode ter ficado de closeModal anterior
+  const elBaixar = document.getElementById('modalBaixar');
+  if(elBaixar) elBaixar.style.display='';
   openModal('modalBaixar');
-  // Fecha modal IMEDIATAMENTE ao confirmar — sem esperar GAS
 }
 
+
 function calcularAcrescimos() {
-  const v = parseMoney(document.getElementById('baixarValor').value||'0');
-  const j = parseMoney(document.getElementById('baixarJuros').value||'0');
-  const m = parseMoney(document.getElementById('baixarMulta').value||'0');
-  const total = v + j + m;
-  document.getElementById('baixarTotalValor').textContent = fmtMoney(total);
+  // Valor original armazenado como número puro pelo abrirBaixar
+  const orig  = parseFloat(document.getElementById('baixarValorOriginal')?.value||'0')||0;
+  const j     = parseMoney(document.getElementById('baixarJuros')?.value||'0');
+  const m     = parseMoney(document.getElementById('baixarMulta')?.value||'0');
+  const total = orig + j + m;
+  // Atualiza campo hidden com valor calculado
+  const cv = document.getElementById('baixarValor');
+  if(cv) cv.value = total.toFixed(2);
+  const el = document.getElementById('baixarTotalValor');
+  if(el) el.textContent = fmtMoney(total);
 }
 function confirmarBaixar() {
   const nf = notas.find(x=>x.id===baixarTarget.nfId);
