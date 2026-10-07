@@ -2130,8 +2130,9 @@ function verDetalheNF(id) {
       ${showPag?`<td>${statusBadge(p.situacao||'A VENCER')}</td>`:''}
       <td>
         <div class="tbl-actions">
-          ${showPag&&canBaixar()&&p.situacao!=='PAGO'?`<button class="btn btn-success btn-sm" onclick="abrirBaixar('${id}',${i})">💰 Baixar</button>`:''}
-          ${canBaixar()||!showPag?`<button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${id}',${i})" title="Editar parcela">✏️</button>`:''}
+          ${(()=>{const sit=String(p.situacao||'').toUpperCase();return showPag&&canBaixar()&&sit!=='PAGO'&&sit!=='CANCELADO'&&sit!=='BAIXA ADM';})()
+            ?`<button class="btn btn-success btn-sm" onclick="abrirBaixar('${id}',${i})">💰 Baixar</button>`:''}
+          ${canBaixar()?`<button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${id}',${i})" title="Editar parcela">✏️</button>`:''}
         </div>
       </td>
     </tr>`;
