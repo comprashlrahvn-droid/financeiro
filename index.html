@@ -2187,20 +2187,11 @@ function abrirBaixar(nfId, idx) {
   document.getElementById('baixarMulta').value='';
   document.getElementById('baixarObs').value='';
 
-  // Reset tipo baixa para Pagamento
-  _tipoBaixa='PAGO';
-  document.querySelectorAll('.btn-tipo-baixa').forEach(b=>b.classList.remove('active'));
-  document.getElementById('btbPagamento')?.classList.add('active');
-  document.getElementById('camposPagamento').style.display='';
-  document.getElementById('camposNaoPagamento').style.display='none';
-  document.getElementById('btnConfirmarBaixar').className='btn btn-success';
-  document.getElementById('btnConfirmarBaixar').textContent='✅ Confirmar Pagamento';
-  document.getElementById('modalBaixarTitle').textContent='💰 Baixar Parcela';
-
+  _tipoBaixa = 'PAGO';
   calcularAcrescimos();
-  // Força visibilidade — remove display:none que pode ter ficado de closeModal anterior
+  // Força visibilidade e abre o modal
   const elBaixar = document.getElementById('modalBaixar');
-  if(elBaixar) elBaixar.style.display='';
+  if(elBaixar) elBaixar.style.display = '';
   openModal('modalBaixar');
 }
 
