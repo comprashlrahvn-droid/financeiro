@@ -1524,7 +1524,7 @@ async function loadData(forcar=false) {
   setSyncBadge('sync');
   // Todas as chamadas em PARALELO — reduz tempo pela metade
   const promises = [
-    apiCall('listarNotas', {}),
+    apiCall('listarNotas', forcar ? { fresh: true } : {}),
     apiCall('listarFornecedores', {})
   ];
   if (currentUser && currentUser.role === 'admin') {
@@ -1785,7 +1785,7 @@ async function atualizarTudo(btn) {
   const orig = btn ? btn.innerHTML : '';
   if(btn){ btn.disabled=true; btn.innerHTML='⏳ Atualizando...'; }
   setSyncBadge('sync');
-  await loadData();
+  await loadData(true);
   populateSelects();
   popularSelectsContas();
   renderNotas();
