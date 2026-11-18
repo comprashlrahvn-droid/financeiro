@@ -2170,6 +2170,7 @@ function processXMLContent(content){
 // MODAL
 // ====================================================
 function openModal(id) {
+  document.getElementById(id).style.display = '';
   document.getElementById(id).classList.add('open');
   if(id==='modalNF' && !editingNFId) {
     document.getElementById('nfNumParcelas').value='1';
@@ -2376,7 +2377,7 @@ function verDetalheNF(id) {
         <div class="tbl-actions">
           ${(()=>{const sit=String(p.situacao||'').toUpperCase();return showPag&&canBaixar()&&sit!=='PAGO'&&sit!=='CANCELADO'&&sit!=='BAIXA ADM';})()
             ?`<button class="btn btn-success btn-sm" onclick="abrirBaixar('${id}',${i})">💰 Baixar</button>`:''}
-          ${(()=>{const sit=String(p.situacao||'').toUpperCase();const enc=['PAGO','CANCELADO','BAIXA ADM'].includes(sit);return enc?(canBaixar()?`<button class="btn btn-warning btn-sm" onclick="abrirReabrir('${id}',${i})" title="Reabrir parcela com justificativa">↩️ Reabrir</button>`:''):(canEdit()?`<button class="btn btn-ghost btn-sm" onclick="abrirProrrogacao([{nfId:'${id}',idx:${i}}])" title="Solicitar prorrogação por e-mail">📧 Prorrogar</button>`:'');})()}
+          ${(()=>{const sit=String(p.situacao||'').toUpperCase();const enc=['PAGO','CANCELADO','BAIXA ADM'].includes(sit);return enc?(canBaixar()?`<button class="btn btn-warning btn-sm" onclick="abrirReabrir('${id}',${i})" title="Reabrir parcela com justificativa">↩️ Reabrir</button>`:''):(canEdit()&&prElegivelParcela(id,i)?`<button class="btn btn-ghost btn-sm" onclick="abrirProrrogacao([{nfId:'${id}',idx:${i}}])" title="Solicitar prorrogação por e-mail">📧 Prorrogar</button>`:'');})()}
           ${canBaixar()?`<button class="btn btn-ghost btn-sm" onclick="abrirEditarParcela('${id}',${i})" title="Editar parcela">✏️</button>`:''}
         </div>
       </td>
@@ -2487,8 +2488,8 @@ function confirmarBaixar() {
   // Força fechamento visual IMEDIATO via display — não espera nenhum JS
   const elBaixar  = document.getElementById('modalBaixar');
   const elDetalhe = document.getElementById('modalDetalheNF');
-  if(elBaixar)  { elBaixar.classList.remove('open');  elBaixar.style.display  = 'none'; }
-  if(elDetalhe) { elDetalhe.classList.remove('open'); elDetalhe.style.display = 'none'; }
+  if(elBaixar)  { elBaixar.classList.remove('open');  elBaixar.style.display  = ''; }
+  if(elDetalhe) { elDetalhe.classList.remove('open'); elDetalhe.style.display = ''; }
 
   // Processa em background após o browser renderizar o fechamento
   setTimeout(() => {
@@ -3862,19 +3863,23 @@ document.addEventListener('input', function(e){
 
 <!-- MODAL PRORROGAÇÃO -->
 <div class="modal-overlay" id="modalProrrog">
-  <div class="modal" style="max-width:940px">
-    <div class="modal-header"><div class="modal-title">📧 Solicitar prorrogação por e-mail</div><button class="modal-close" onclick="closeModal('modalProrrog')">✕</button></div>
+  <div class="modal" style="max-width:980px">
+    <div class="modal-header"><div class="modal-title">📧 Solicitar prorrogação de vencimento</div><button class="modal-close" onclick="closeModal('modalProrrog')">✕</button></div>
     <div class="modal-body">
       <div id="prSel">
-        <input class="search-box" id="prBusca" placeholder="🔍 Buscar fornecedor ou nº da NF…" oninput="prRender()" style="width:100%;margin-bottom:12px">
-        <div id="prLista" style="max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:12px"></div>
+        <div class="notice notice-info" style="display:block;margin-bottom:12px">Aparecem apenas parcelas <strong>vencidas</strong> ou que <strong>vencem em até 15 dias</strong>. Cada fornecedor recebe um único e-mail, somente com as suas notas e parcelas.</div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <input class="search-box" id="prBusca" placeholder="🔍 Buscar fornecedor ou nº da NF…" oninput="prRender()" style="flex:1;min-width:220px">
+          <select class="filter" id="prFiltro" onchange="prRender()"><option value="todas">Vencidas e a vencer</option><option value="VENCIDA">Somente vencidas</option><option value="PRÓXIMO VENCIMENTO">Somente a vencer (15 dias)</option></select>
+        </div>
+        <div id="prLista" style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:12px"></div>
         <div class="section-title" style="margin-top:18px">Prazo solicitado</div>
         <div class="form-grid">
           <div class="form-group"><label>Tipo</label>
             <select id="prModo" onchange="prModo(this.value)"><option value="dias">Prorrogar por quantidade de dias</option><option value="data">Data fixa de vencimento</option></select></div>
-          <div class="form-group" id="prGrpDias"><label>Dias a prorrogar (a partir do vencimento atual)</label><input type="number" id="prDias" min="1" max="365" value="7"></div>
+          <div class="form-group" id="prGrpDias"><label>Dias a prorrogar <span style="font-weight:400">(a partir do vencimento; se já vencida, a partir de hoje)</span></label><input type="number" id="prDias" min="1" max="365" value="7"></div>
           <div class="form-group" id="prGrpData" style="display:none"><label>Novo vencimento (data fixa)</label><input type="date" id="prData"></div>
-          <div class="form-group span2"><label>Motivo / observação (opcional, vai no e-mail)</label><textarea id="prMotivo" rows="2"></textarea></div>
+          <div class="form-group span2"><label>Observação para o fornecedor (opcional, aparece no e-mail)</label><textarea id="prMotivo" rows="2" maxlength="600"></textarea></div>
         </div>
       </div>
       <div id="prEmails" style="display:none"></div>
@@ -3882,7 +3887,8 @@ document.addEventListener('input', function(e){
     <div class="modal-footer"><span id="prCont" style="margin-right:auto;font-size:13px;color:var(--muted)"></span>
       <button class="btn btn-ghost" id="prVoltar" style="display:none" onclick="prStep(1)">← Voltar</button>
       <button class="btn btn-ghost" onclick="closeModal('modalProrrog')">Fechar</button>
-      <button class="btn btn-primary" id="prGerar" onclick="prStep(2)">Gerar e-mails →</button></div>
+      <button class="btn btn-primary" id="prGerar" onclick="prStep(2)">Pré-visualizar e-mails →</button>
+      <button class="btn btn-success" id="prEnviarTodos" style="display:none" onclick="prEnviarTodos()">✉️ Enviar todos</button></div>
   </div>
 </div>
 
@@ -3937,29 +3943,32 @@ document.addEventListener('input', function(e){
     setTimeout(() => verDetalheNF(nfId), 100);
   };
 
-  /* ───────── Prorrogação por e-mail ───────── */
-  const LS = 'nf_forn_emails';
-  const lerEmails = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { return {}; } };
-  const gravarEmail = (k, v) => { try { const o = lerEmails(); o[k] = v; localStorage.setItem(LS, JSON.stringify(o)); } catch (e) {} };
-  const emailOk = s => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(s);
-  let SEL = new Set(), GROUPS = [];
-
+  /* ───────── Prorrogação por e-mail (o envio é feito pelo servidor) ───────── */
+  let SEL = new Set(), GROUPS = [], PAYLOAD = null;
+  const STATUS_OK = ['VENCIDA', 'PRÓXIMO VENCIMENTO'];
+  const statusParc = (nf, p) => calcStatus({ fornecedor: nf.fornecedor, parcelas: [p] });
+  const elegivel = (nf, p) => !!p.vencimento && !isEnc(p) && STATUS_OK.includes(statusParc(nf, p));
+  window.prElegivelParcela = function(nfId, idx){ const nf = notas.find(x => x.id === nfId); const p = nf && nf.parcelas[idx]; return !!(p && elegivel(nf, p)); };
   function abertas(){
     const r = [];
-    (notas || []).forEach(nf => (nf.parcelas || []).forEach((p, i) => { if (p.vencimento && !isEnc(p)) r.push({ nf, p, i, key: nf.id + '|' + i }); }));
+    (notas || []).forEach(nf => (nf.parcelas || []).forEach((p, i) => { if (elegivel(nf, p)) r.push({ nf, p, i, key: nf.id + '|' + i, st: statusParc(nf, p) }); }));
     return r;
   }
   window.abrirProrrogacao = function(pre){
     if (!canEdit()) { alert('Sem permissão para solicitar prorrogação.'); return; }
-    SEL = new Set((pre || []).map(x => x.nfId + '|' + x.idx));
-    $('prBusca').value = ''; $('prModo').value = 'dias'; prModo('dias'); $('prDias').value = '7'; $('prData').value = ''; $('prMotivo').value = '';
+    const ok = new Set(abertas().map(x => x.key));
+    const pedidas = (pre || []).map(x => x.nfId + '|' + x.idx);
+    SEL = new Set(pedidas.filter(k => ok.has(k)));
+    if (pedidas.length && !SEL.size) { alert('Esta parcela não está vencida nem próxima do vencimento (até 15 dias), portanto não pode ser incluída.'); return; }
+    $('prBusca').value = ''; $('prFiltro').value = 'todas'; $('prModo').value = 'dias'; prModo('dias'); $('prDias').value = '7'; $('prData').value = ''; $('prMotivo').value = '';
     prStep(1); prRender(); openModal('modalProrrog');
   };
   window.prModo = function(m){ $('prGrpDias').style.display = m === 'dias' ? '' : 'none'; $('prGrpData').style.display = m === 'data' ? '' : 'none'; };
   window.prRender = function(){
-    const q = ($('prBusca').value || '').toLowerCase().trim();
+    const q = ($('prBusca').value || '').toLowerCase().trim(), fl = $('prFiltro').value;
     const map = new Map();
     abertas().forEach(x => {
+      if (fl !== 'todas' && x.st !== fl) return;
       if (q && !(String(x.nf.fornecedor).toLowerCase().includes(q) || String(x.nf.numero).toLowerCase().includes(q))) return;
       if (!map.has(x.nf.fornecedor)) map.set(x.nf.fornecedor, []);
       map.get(x.nf.fornecedor).push(x);
@@ -3969,77 +3978,65 @@ document.addEventListener('input', function(e){
       arr.sort((a, b) => toDateLocal(a.p.vencimento) - toDateLocal(b.p.vencimento));
       const todos = arr.every(x => SEL.has(x.key));
       return `<div style="border-bottom:1px solid var(--border)"><label style="display:flex;gap:10px;align-items:center;padding:10px 14px;background:var(--bg);font-weight:700;cursor:pointer">
-        <input type="checkbox" ${todos ? 'checked' : ''} onchange="prTogForn(${gi},this.checked)"> ${esc(forn)} <span style="font-weight:500;color:var(--muted);font-size:12px">(${arr.length} em aberto)</span></label>` +
+        <input type="checkbox" ${todos ? 'checked' : ''} onchange="prTogForn(${gi},this.checked)"> ${esc(forn)} <span style="font-weight:500;color:var(--muted);font-size:12px">(${arr.length} parcela(s))</span></label>` +
         arr.map(x => `<label style="display:flex;gap:10px;align-items:center;padding:8px 14px 8px 38px;cursor:pointer;font-size:13px">
           <input type="checkbox" ${SEL.has(x.key) ? 'checked' : ''} onchange="prTog('${x.key.replace(/'/g, "\\'")}',this.checked)">
           <span>NF #${esc(x.nf.numero)} — parcela ${x.i + 1}/${x.nf.parcelas.length}</span><span style="color:var(--muted)">vence ${fmtDate(x.p.vencimento)}</span>
-          <span style="margin-left:auto;font-weight:600">${fmtMoney(parseMoney(x.p.valor))}</span>${statusBadge(calcStatus({ fornecedor: x.nf.fornecedor, parcelas: [x.p] }))}</label>`).join('') + '</div>';
-    }).join('') : '<div class="empty" style="padding:30px">Nenhuma parcela em aberto encontrada.</div>';
+          <span style="margin-left:auto;font-weight:600">${fmtMoney(parseMoney(x.p.valor))}</span>${statusBadge(x.st)}</label>`).join('') + '</div>';
+    }).join('') : '<div class="empty" style="padding:30px">Nenhuma parcela vencida ou próxima do vencimento encontrada.</div>';
     prCont();
   };
   function prCont(){ $('prCont').textContent = SEL.size ? SEL.size + ' parcela(s) selecionada(s)' : 'Nenhuma parcela selecionada'; }
   window.prTog = function(k, on){ on ? SEL.add(k) : SEL.delete(k); prRender(); };
   window.prTogForn = function(gi, on){ GROUPS[gi][1].forEach(x => on ? SEL.add(x.key) : SEL.delete(x.key)); prRender(); };
 
-  const addDias = (iso, n) => { const d = toDateLocal(iso); d.setDate(d.getDate() + n); return isoLocal(d); };
-  function novoVenc(p){ return $('prModo').value === 'dias' ? addDias(p.vencimento, parseInt($('prDias').value, 10)) : $('prData').value; }
-
-  window.prStep = function(n){
+  window.prStep = async function(n){
     $('prSel').style.display = n === 1 ? '' : 'none'; $('prEmails').style.display = n === 2 ? '' : 'none';
-    $('prVoltar').style.display = n === 2 ? '' : 'none'; $('prGerar').style.display = n === 1 ? '' : 'none';
-    if (n === 1) return;
-    const itens = abertas().filter(x => SEL.has(x.key));
+    $('prVoltar').style.display = n === 2 ? '' : 'none'; $('prGerar').style.display = n === 1 ? '' : 'none'; $('prEnviarTodos').style.display = 'none';
+    if (n === 1) { prCont(); return; }
+    const itens = abertas().filter(x => SEL.has(x.key)).map(x => ({ numero: x.nf.numero, ano: String(x.nf.ano), parcIdx: x.i }));
     if (!itens.length) { alert('Selecione ao menos uma parcela.'); return prStep(1); }
-    if ($('prModo').value === 'dias') {
-      const d = parseInt($('prDias').value, 10);
-      if (!(d >= 1 && d <= 365)) { alert('Informe de 1 a 365 dias.'); return prStep(1); }
-    } else {
-      const f = $('prData').value;
-      if (!f) { alert('Informe a data fixa de vencimento.'); return prStep(1); }
-      if (f < today()) { alert('A nova data não pode estar no passado.'); return prStep(1); }
-      const ruim = itens.filter(x => f <= String(x.p.vencimento).slice(0, 10));
-      if (ruim.length) { alert('A data fixa precisa ser posterior ao vencimento atual. Parcelas com problema:\n• ' + ruim.map(x => 'NF #' + x.nf.numero + ' parcela ' + (x.i + 1) + ' (vence ' + fmtDate(x.p.vencimento) + ')').join('\n• ')); return prStep(1); }
+    const modo = $('prModo').value;
+    if (modo === 'dias') { const d = parseInt($('prDias').value, 10); if (!(d >= 1 && d <= 365)) { alert('Informe de 1 a 365 dias.'); return prStep(1); } }
+    else { const f = $('prData').value; if (!f) { alert('Informe a data fixa de vencimento.'); return prStep(1); } if (f < today()) { alert('A nova data não pode estar no passado.'); return prStep(1); } }
+    PAYLOAD = { modo, dias: $('prDias').value, data: $('prData').value, motivo: $('prMotivo').value.trim() };
+    $('prEmails').innerHTML = '<div class="empty" style="padding:40px">Gerando pré-visualização dos e-mails…</div>';
+    const res = await apiCall('prepararProrrogacao', { ...PAYLOAD, itens: JSON.stringify(itens) });
+    if (!res || !res.ok || !Array.isArray(res.grupos)) { alert((res && res.erro) || 'Não foi possível gerar a pré-visualização. Verifique se o Apps Script foi atualizado e reimplantado.'); return prStep(1); }
+    GROUPS = res.grupos.map(g => ({ ...g, enviado: false }));
+    $('prEmails').innerHTML = `<div class="notice notice-info" style="display:block">Serão enviados <strong>${GROUPS.length} e-mail(s)</strong>, um para cada fornecedor, contendo apenas as notas e parcelas dele. Confira os destinatários e a pré-visualização.</div>` +
+      GROUPS.map((g, gi) => `<div class="parcela-block" id="prCard${gi}"><h4>${esc(g.fornecedor)} — ${g.qtd} parcela(s) — ${fmtMoney(g.total)} <span id="prOk${gi}" style="font-weight:600"></span></h4>
+        <div class="form-group"><label>Para (um ou mais e-mails, separados por ;) *</label><input type="text" id="prTo${gi}" value="${esc((g.emails || []).join('; '))}" placeholder="financeiro@fornecedor.com.br"></div>
+        <iframe sandbox title="Pré-visualização" srcdoc="${esc(g.html)}" style="width:100%;height:430px;border:1px solid var(--border);border-radius:10px;background:#fff"></iframe>
+        <div style="margin-top:10px"><button class="btn btn-primary btn-sm" id="prBtn${gi}" onclick="prEnviar([${gi}])">✉️ Enviar este e-mail</button></div></div>`).join('');
+    $('prEnviarTodos').style.display = ''; prAtualizaTodos();
+  };
+  function prAtualizaTodos(){ const n = GROUPS.filter(g => !g.enviado).length; $('prEnviarTodos').textContent = '✉️ Enviar todos (' + n + ')'; $('prEnviarTodos').disabled = !n; }
+  window.prEnviarTodos = function(){ prEnviar(GROUPS.map((g, i) => i).filter(i => !GROUPS[i].enviado)); };
+  window.prEnviar = async function(idxs){
+    idxs = idxs.filter(i => !GROUPS[i].enviado);
+    if (!idxs.length) return;
+    const dest = {}, itens = [];
+    for (const i of idxs) {
+      const r = parseEmails($('prTo' + i).value);
+      if (!r.lista.length || r.invalidos.length) { alert(GROUPS[i].fornecedor + ': ' + (r.invalidos.length ? 'e-mail(s) inválido(s): ' + r.invalidos.join(', ') : 'informe ao menos um e-mail.')); return; }
+      dest[GROUPS[i].fornecedor] = r.lista; itens.push(...GROUPS[i].itens);
     }
-    const porForn = new Map();
-    itens.forEach(x => { if (!porForn.has(x.nf.fornecedor)) porForn.set(x.nf.fornecedor, []); porForn.get(x.nf.fornecedor).push(x); });
-    const salvos = lerEmails(), dias = $('prModo').value === 'dias';
-    const motivo = $('prMotivo').value.trim(), assin = (currentUser && (currentUser.nome || currentUser.id)) || '';
-    GROUPS = [...porForn.entries()];
-    $('prEmails').innerHTML = `<div class="notice notice-info" style="display:block">Será gerado <strong>um e-mail por fornecedor</strong> (${GROUPS.length}), reunindo todas as parcelas selecionadas dele. Revise o texto e clique em “Abrir no e-mail”: o envio é feito pelo seu programa de e-mail.</div>` +
-      GROUPS.map(([forn, arr], gi) => {
-        arr.sort((a, b) => toDateLocal(a.p.vencimento) - toDateLocal(b.p.vencimento));
-        const f0 = (fornecedores || []).find(f => f.nome === forn) || {};
-        const to = (f0.emails && f0.emails.length) ? f0.emails.join('; ') : (salvos[f0.cnpj || forn] || '');
-        const linhas = arr.map(x => `• NF nº ${x.nf.numero} – parcela ${x.i + 1}/${x.nf.parcelas.length} – valor ${fmtMoney(parseMoney(x.p.valor))} – vencimento atual ${fmtDate(x.p.vencimento)} – novo vencimento solicitado: ${fmtDate(novoVenc(x.p))}`).join('\n');
-        const corpo = `Prezados(as) ${forn},\n\nSolicitamos a prorrogação ${dias ? 'em ' + $('prDias').value + ' dia(s)' : 'para o dia ' + fmtDate($('prData').value)} do vencimento ${arr.length > 1 ? 'das parcelas abaixo' : 'da parcela abaixo'}:\n\n${linhas}\n\n` +
-          (motivo ? 'Motivo: ' + motivo + '\n\n' : '') + 'Pedimos a gentileza de confirmar o aceite respondendo a este e-mail.\n\nAtenciosamente,\n' + assin + '\nSetor Financeiro – Associação Hospitalar Vila Nova';
-        const assunto = arr.length === 1 ? `Solicitação de prorrogação de vencimento – NF ${arr[0].nf.numero}` : `Solicitação de prorrogação de vencimentos – ${arr.length} parcelas`;
-        return `<div class="parcela-block" id="prCard${gi}"><h4>${esc(forn)} — ${arr.length} parcela(s) <span id="prOk${gi}" style="color:var(--green)"></span></h4>
-          <div class="form-grid"><div class="form-group"><label>Para (um ou mais e-mails, separados por ;) *</label><input type="email" id="prTo${gi}" value="${esc(to)}" placeholder="financeiro@fornecedor.com.br"></div>
-          <div class="form-group"><label>Assunto</label><input type="text" id="prAs${gi}" value="${esc(assunto)}"></div></div>
-          <div class="form-group"><label>Mensagem</label><textarea id="prBd${gi}" rows="${Math.min(16, 9 + arr.length)}">${esc(corpo)}</textarea></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="prAbrir(${gi})">📧 Abrir no e-mail</button><button class="btn btn-ghost btn-sm" onclick="prCopiar(${gi})">📋 Copiar texto</button></div></div>`;
-      }).join('');
-  };
-  window.prAbrir = async function(gi){
-    const r = parseEmails($('prTo' + gi).value);
-    if (!r.lista.length || r.invalidos.length) { alert(r.invalidos.length ? 'E-mail(s) inválido(s): ' + r.invalidos.join(', ') : 'Informe ao menos um e-mail do fornecedor.'); return; }
-    const forn = GROUPS[gi][0], f0 = (fornecedores || []).find(f => f.nome === forn) || {};
-    const url = 'mailto:' + r.lista.join(',') + '?subject=' + encodeURIComponent($('prAs' + gi).value) + '&body=' + encodeURIComponent($('prBd' + gi).value);
-    if (url.length > 1900 && !confirm('A mensagem é longa e alguns programas de e-mail podem cortá-la. Abrir mesmo assim? (Você também pode usar “Copiar texto”.)')) return;
-    gravarEmail(f0.cnpj || forn, r.lista.join('; '));
-    window.location.href = url; $('prOk' + gi).textContent = '✓ aberto no e-mail';
-    // grava os e-mails no cadastro do fornecedor (banco de dados)
-    if (!f0.cnpj) { $('prOk' + gi).textContent += ' — fornecedor sem cadastro: e-mail guardado só neste navegador'; return; }
-    if (JSON.stringify(f0.emails || []) === JSON.stringify(r.lista)) return;
-    const res = await apiCall('salvarEmailsFornecedor', { cnpj: f0.cnpj, emails: JSON.stringify(r.lista) });
-    if (res && res.ok) { f0.emails = r.lista; f0.email = r.lista.join('; '); $('prOk' + gi).textContent += ' — e-mails salvos no cadastro'; }
-    else $('prOk' + gi).textContent += ' — ⚠ não foi possível salvar no cadastro: ' + ((res && res.erro) || 'erro');
-  };
-  window.prCopiar = async function(gi){
-    const txt = 'Assunto: ' + $('prAs' + gi).value + '\n\n' + $('prBd' + gi).value;
-    try { await navigator.clipboard.writeText(txt); $('prOk' + gi).textContent = '✓ texto copiado'; }
-    catch (e) { const t = $('prBd' + gi); t.focus(); t.select(); alert('Copie o texto selecionado (Ctrl+C).'); }
+    if (!confirm('Enviar ' + idxs.length + ' e-mail(s) de solicitação de prorrogação agora?\n\n' + idxs.map(i => '• ' + GROUPS[i].fornecedor + ' → ' + dest[GROUPS[i].fornecedor].join(', ')).join('\n'))) return;
+    const btns = idxs.map(i => $('prBtn' + i)); btns.forEach(b => b.disabled = true); $('prEnviarTodos').disabled = true;
+    idxs.forEach(i => { $('prOk' + i).style.color = 'var(--muted)'; $('prOk' + i).textContent = 'enviando…'; });
+    const res = await apiCall('enviarProrrogacao', { ...PAYLOAD, itens: JSON.stringify(itens), destinatarios: JSON.stringify(dest) });
+    if (!res || !res.ok || !Array.isArray(res.resultados)) { alert((res && res.erro) || 'Falha ao enviar. Verifique se o Apps Script foi atualizado e reimplantado.'); idxs.forEach(i => { $('prOk' + i).textContent = ''; $('prBtn' + i).disabled = false; }); prAtualizaTodos(); return; }
+    res.resultados.forEach(rs => {
+      const i = GROUPS.findIndex(g => g.fornecedor === rs.fornecedor); if (i < 0) return;
+      const el = $('prOk' + i);
+      if (rs.ok) {
+        GROUPS[i].enviado = true; el.style.color = 'var(--green)'; el.textContent = '✓ enviado em ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        $('prBtn' + i).textContent = 'Enviado'; $('prTo' + i).disabled = true;
+        const f0 = (fornecedores || []).find(f => f.nome === rs.fornecedor); if (f0) { f0.emails = rs.emails; f0.email = rs.emails.join('; '); }
+      } else { el.style.color = 'var(--red)'; el.textContent = '✗ ' + rs.erro; $('prBtn' + i).disabled = false; }
+    });
+    prAtualizaTodos();
   };
 })();
 </script>
