@@ -618,6 +618,7 @@ input[type=date]{color-scheme:light}
       <button class="nav-btn" data-page="relatorios" onclick="goPage('relatorios',this)" id="navRelatorios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M6 17v-5M11 17V6M16 17v-8"/></svg><span>Relatórios</span></button>
       <button class="nav-btn" data-page="contas" onclick="goPage('contas',this)" id="navContas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg><span>Contas</span></button>
       <button class="nav-btn" data-page="usuarios" onclick="goPage('usuarios',this)" id="navUsuarios" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-5.5 6.5-5.5s6.5 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2.2.6 3.5 2.2 3.5 5.2"/></svg><span>Usuários</span></button>
+      <button class="nav-btn" data-page="dados" onclick="goPage('dados',this)" id="navDados" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><span>Dados do sistema</span></button>
     </nav>
     <div class="sb-foot">
       <div id="syncBadge"></div>
@@ -995,7 +996,29 @@ input[type=date]{color-scheme:light}
       </div>
     </div>
 
-    <div id="page-usuarios" class="page">
+    <div class="page" id="page-dados">
+  <div class="page-header"><h2>Dados do sistema</h2></div>
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-title">📥 Importar planilha</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.55">Importe uma planilha no <strong>formato atual</strong> (uma linha por NF, colunas A até AY, dados a partir da linha 3, uma aba para cada ano com o nome do ano — 2025, 2026…). As NFs são gravadas junto com todas as parcelas, pagamentos e situações. NFs que já existem (mesmo número e ano) são ignoradas. Fornecedores novos são cadastrados automaticamente.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="file" id="impArq" accept=".xlsx,.xls,.xlsm,.csv" style="max-width:360px">
+      <button class="btn btn-ghost" onclick="impLer()">📄 Ler arquivo</button>
+    </div>
+    <div id="impAbas" style="margin-top:14px"></div>
+    <div id="impAcoes" style="display:none;margin-top:12px"><button class="btn btn-primary" id="impBtn" onclick="impImportar()">📥 Importar para o sistema</button></div>
+    <div id="impProg" style="display:none;margin-top:14px"><div style="height:10px;background:#e5eeec;border-radius:6px;overflow:hidden"><div id="impBar" style="height:100%;width:0;background:var(--accent);transition:width .2s"></div></div><div id="impTxt" style="font-size:12.5px;color:var(--muted);margin-top:6px"></div></div>
+    <div id="impRes" style="margin-top:12px"></div>
+  </div>
+  <div class="chart-card" style="border-color:#f3c2c2">
+    <div class="chart-title" style="color:#b91c1c">🗑️ Limpar todos os dados</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:6px;line-height:1.55">Apaga <strong>todas as NFs e parcelas</strong>, os acréscimos (juros e multas) e o histórico de prorrogações, para você carregar uma planilha atualizada. <strong>Fornecedores, usuários e o registro de atividades são mantidos.</strong> Antes de apagar, o sistema cria uma cópia de segurança dentro da própria planilha (abas “BKP_…”; as 2 últimas cópias são guardadas).</p>
+    <p id="dadosResumo" style="font-size:13px;margin-bottom:12px"></p>
+    <button class="btn btn-danger" onclick="abrirLimpar()">🗑️ Limpar todos os dados…</button>
+  </div>
+</div>
+
+<div id="page-usuarios" class="page">
       <div class="page-header">
         <h2>Gestão de Usuários</h2>
         <button class="btn btn-primary" onclick="abrirNovoUsuario()">➕ Novo Usuário</button>
@@ -1548,6 +1571,7 @@ async function loadData(forcar=false) {
 
 // Recarrega só as notas (após salvar/editar/aprovar etc)
 async function reloadNotas(silencioso=false) {
+  if (window.__notaPatched) { window.__notaPatched = false; normalizarNotas(); setSyncBadge('ok'); return true; }   // o servidor já devolveu a nota atualizada
   if(!silencioso) setSyncBadge('sync');
   const res = await apiCall('listarNotas', {});
   if(res.ok){
@@ -1744,6 +1768,8 @@ function aplicarPermissoes() {
   // Usuários — somente Administrador Master
   const navUsr = document.getElementById('navUsuarios');
   if (navUsr) navUsr.style.display = isMaster ? '' : 'none';
+  const navDados = document.getElementById('navDados');
+  if (navDados) navDados.style.display = isMaster ? '' : 'none';
 
   // Botão "Nova NF" — todos podem lançar
   const btnNova = document.getElementById('btnNovaNote');
@@ -1822,7 +1848,7 @@ function goPage(id, btn) {
     btn = document.querySelector('[data-page="notas"]');
   }
   // Usuários — somente Administrador Master
-  if (id === 'usuarios' && !currentUser.isMaster) {
+  if ((id === 'usuarios' || id === 'dados') && !currentUser.isMaster) {
     id = 'notas';
     btn = document.querySelector('[data-page="notas"]');
   }
@@ -1834,6 +1860,7 @@ function goPage(id, btn) {
   if(id==='relatorios') populateRelFornSelect();
   if(id==='dashboard') renderDashboard();
   if(id==='usuarios') renderUsuarios();
+  if(id==='dados' && typeof renderDados==='function') renderDados();
   if(id==='contas') renderListaContas();
 }
 
@@ -3891,8 +3918,36 @@ document.addEventListener('input', function(e){
       <button class="btn btn-success" id="prEnviarTodos" style="display:none" onclick="prEnviarTodos()">✉️ Enviar todos</button></div>
   </div>
 </div>
+<!-- MODAL LIMPAR DADOS -->
+<div class="modal-overlay" id="modalLimpar">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><div class="modal-title" style="color:#b91c1c">🗑️ Limpar todos os dados</div><button class="modal-close" onclick="closeModal('modalLimpar')">✕</button></div>
+    <div class="modal-body">
+      <div class="notice notice-warn" style="display:block;margin-bottom:14px">Esta ação apaga <strong>todas as notas fiscais, parcelas, juros/multas e prorrogações</strong>. Fornecedores e usuários são mantidos. Uma cópia de segurança é criada na planilha antes de apagar.</div>
+      <div class="form-group"><label for="limpSenha">Sua senha de Administrador Master *</label><input type="password" id="limpSenha" autocomplete="current-password"></div>
+      <div class="form-group"><label for="limpConf">Digite <strong>LIMPAR</strong> para confirmar *</label><input type="text" id="limpConf" autocomplete="off" placeholder="LIMPAR"></div>
+      <div id="limpErro" class="login-error" style="margin-bottom:0"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modalLimpar')">Cancelar</button><button class="btn btn-danger" id="limpBtn" onclick="confirmarLimpar()">🗑️ Apagar todos os dados</button></div>
+  </div>
+</div>
 
 <script>
+/* ── Resposta do servidor com a nota já atualizada: aplica na tela sem recarregar tudo ── */
+(function(){
+  const orig = window.apiCall;
+  window.apiCall = async function(acao, params){
+    const res = await orig.call(this, acao, params);
+    try {
+      if (res && res.ok && typeof notas !== 'undefined') {
+        if (res.nota) { const i = notas.findIndex(n => n.numero === res.nota.numero && String(n.ano) === String(res.nota.ano)); if (i >= 0) notas[i] = res.nota; else notas.push(res.nota); window.__notaPatched = true; }
+        else if (res.patch) { const n = notas.find(x => x.numero === res.patch.numero && String(x.ano) === String(res.patch.ano)); if (n) { Object.assign(n, res.patch); window.__notaPatched = true; } }
+        else if (res.removido) { notas = notas.filter(n => !(n.numero === res.removido.numero && String(n.ano) === String(res.removido.ano))); window.__notaPatched = true; }
+      }
+    } catch (e) {}
+    return res;
+  };
+})();
 /* ── Reabertura de parcela baixada + solicitação de prorrogação por e-mail ── */
 (function(){
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -4037,6 +4092,116 @@ document.addEventListener('input', function(e){
       } else { el.style.color = 'var(--red)'; el.textContent = '✗ ' + rs.erro; $('prBtn' + i).disabled = false; }
     });
     prAtualizaTodos();
+  };
+})();
+
+/* ── Dados do sistema (somente Master): importar planilha e limpar dados ── */
+(function(){
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let IMP = [];   // [{nome, ano, linhas:[...], incluir}]
+  const DATAS = [1]; for (let k = 0; k < 8; k++) { DATAS.push(9 + k * 5, 9 + k * 5 + 2); }
+
+  window.renderDados = function(){
+    const n = (typeof notas !== 'undefined' ? notas.length : 0), p = (typeof notas !== 'undefined' ? notas.reduce((s, x) => s + (x.parcelas || []).length, 0) : 0);
+    $('dadosResumo').innerHTML = 'Hoje o sistema tem <strong>' + n + '</strong> nota(s) fiscal(is) e <strong>' + p + '</strong> parcela(s).';
+  };
+
+  function iso(v){
+    if (v === '' || v == null) return '';
+    if (v instanceof Date) return isNaN(v) ? '' : v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
+    if (typeof v === 'number') {
+      if (v < 20000 || v > 80000) return '';
+      const d = XLSX.SSF.parse_date_code(v); return d ? d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0') : '';
+    }
+    const s = String(v).trim(); let m;
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s))) return m[1] + '-' + m[2] + '-' + m[3];
+    if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s))) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return '';
+  }
+  function linha(r){
+    const o = new Array(51).fill('');
+    for (let i = 0; i < 51; i++) { const v = r[i]; o[i] = (v === undefined || v === null) ? '' : (typeof v === 'string' ? v.trim() : v); }
+    DATAS.forEach(i => { const raw = r[i]; const t = iso(raw); o[i] = t || (raw === '' || raw == null ? '' : 'INVALIDA'); });
+    return o;
+  }
+
+  window.impLer = function(){
+    const f = $('impArq').files[0];
+    if (!f) { alert('Escolha o arquivo da planilha.'); return; }
+    if (typeof XLSX === 'undefined') { alert('A biblioteca de leitura de planilhas não carregou. Verifique a conexão com a internet e recarregue a página.'); return; }
+    const rd = new FileReader();
+    rd.onerror = () => alert('Não foi possível ler o arquivo.');
+    rd.onload = e => {
+      let wb;
+      try { wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); } catch (er) { alert('Arquivo inválido: ' + er.message); return; }
+      IMP = wb.SheetNames.map(nome => {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[nome], { header: 1, raw: true, defval: '' }).slice(2);
+        const linhas = rows.filter(r => String(r[0] == null ? '' : r[0]).trim() !== '').map(linha);
+        const m = /(20\d{2})/.exec(nome);
+        return { nome, ano: m ? m[1] : '', linhas, incluir: linhas.length > 0 && !!m };
+      });
+      impMostrar();
+    };
+    rd.readAsArrayBuffer(f);
+  };
+  function impMostrar(){
+    $('impRes').innerHTML = ''; $('impProg').style.display = 'none';
+    $('impAbas').innerHTML = '<table class="tbl"><thead><tr><th></th><th>Aba</th><th>Ano das NFs</th><th>NFs encontradas</th><th>Exemplo (1ª linha)</th></tr></thead><tbody>' +
+      IMP.map((a, i) => { const p = a.linhas[0]; return `<tr><td><input type="checkbox" ${a.incluir ? 'checked' : ''} ${a.linhas.length ? '' : 'disabled'} onchange="impSel(${i},this.checked)"></td><td>${esc(a.nome)}</td>
+        <td><input type="text" value="${esc(a.ano)}" maxlength="4" style="width:80px" onchange="impAno(${i},this.value)" ${a.linhas.length ? '' : 'disabled'}></td><td>${a.linhas.length}</td>
+        <td style="font-size:12px;color:var(--muted)">${p ? 'NF ' + esc(p[0]) + ' — ' + esc(p[2]) : '—'}</td></tr>`; }).join('') + '</tbody></table>';
+    $('impAcoes').style.display = IMP.some(a => a.linhas.length) ? '' : 'none';
+  }
+  window.impSel = (i, on) => { IMP[i].incluir = on; };
+  window.impAno = (i, v) => { IMP[i].ano = String(v).trim(); };
+
+  window.impImportar = async function(){
+    const abas = IMP.filter(a => a.incluir && a.linhas.length);
+    if (!abas.length) { alert('Marque ao menos uma aba para importar.'); return; }
+    const ruim = abas.find(a => !/^\d{4}$/.test(a.ano));
+    if (ruim) { alert('Informe o ano (4 dígitos) da aba "' + ruim.nome + '".'); return; }
+    const total = abas.reduce((s, a) => s + a.linhas.length, 0);
+    if (!confirm('Importar ' + total + ' nota(s) fiscal(is) de ' + abas.length + ' aba(s)?\nNotas que já existem (mesmo número e ano) serão ignoradas.')) return;
+    $('impBtn').disabled = true; $('impProg').style.display = ''; $('impRes').innerHTML = '';
+    let feitas = 0, imp = 0, ign = 0, parc = 0, novosF = 0; const erros = [];
+    try {
+      for (const a of abas) {
+        for (let off = 0; off < a.linhas.length; off += 250) {
+          const lote = a.linhas.slice(off, off + 250);
+          $('impTxt').textContent = 'Importando aba ' + a.nome + ' — ' + feitas + ' de ' + total + '…';
+          const r = await apiCall('importarLote', { ano: a.ano, linhas: JSON.stringify(lote), linhaInicial: 3 + off });
+          if (!r || !r.ok) throw new Error((r && r.erro) || 'falha de comunicação com o servidor');
+          imp += r.importadas; ign += r.ignoradas; parc += r.parcelas; novosF += r.novosFornecedores || 0;
+          (r.erros || []).forEach(e => erros.push('Aba ' + a.nome + ', linha ' + e.linha + ': ' + e.motivo));
+          feitas += lote.length; $('impBar').style.width = Math.round(feitas / total * 100) + '%';
+        }
+      }
+      $('impTxt').textContent = 'Concluído.';
+    } catch (e) {
+      $('impTxt').textContent = 'Interrompido.';
+      $('impRes').innerHTML = '<div class="notice notice-warn" style="display:block">A importação foi interrompida: ' + esc(e.message) + '. O que já foi gravado permanece; ao importar o mesmo arquivo de novo, as notas já gravadas são ignoradas.</div>';
+    }
+    $('impBtn').disabled = false;
+    await atualizarTudo(); renderDados();
+    $('impRes').innerHTML += `<div class="notice ${erros.length ? 'notice-warn' : 'notice-success'}" style="display:block">✅ <strong>${imp}</strong> NF(s) e <strong>${parc}</strong> parcela(s) importadas. ${ign} já existiam (ignoradas). ${novosF} fornecedor(es) novo(s) cadastrado(s). ${erros.length ? '<br><strong>' + erros.length + ' linha(s) com problema (não importadas):</strong><br>' + erros.slice(0, 30).map(esc).join('<br>') : ''}</div>`;
+  };
+
+  window.abrirLimpar = function(){ $('limpSenha').value = ''; $('limpConf').value = ''; $('limpErro').style.display = 'none'; $('limpBtn').disabled = false; openModal('modalLimpar'); };
+  window.confirmarLimpar = async function(){
+    const senha = $('limpSenha').value, conf = $('limpConf').value.trim(), er = $('limpErro');
+    const falha = m => { er.textContent = m; er.style.display = 'block'; };
+    if (!senha) return falha('Informe a sua senha.');
+    if (conf.toUpperCase() !== 'LIMPAR') return falha('Digite LIMPAR para confirmar.');
+    if (!confirm('ÚLTIMA CONFIRMAÇÃO: apagar TODAS as notas fiscais e parcelas do sistema?')) return;
+    $('limpBtn').disabled = true;
+    const r = await apiCall('limparDados', { senha, confirmacao: conf });
+    $('limpBtn').disabled = false;
+    if (!r || !r.ok) return falha((r && r.erro) || 'Não foi possível limpar os dados.');
+    closeModal('modalLimpar');
+    try { localStorage.removeItem('nf_validacoes'); Object.keys(_validacoesDefinitivas).forEach(k => delete _validacoesDefinitivas[k]); } catch (e) {}
+    await atualizarTudo(); renderDados();
+    alert('Dados apagados: ' + r.removidas + ' NF(s) e ' + r.parcelas + ' parcela(s).\nCópia de segurança criada na planilha (abas "' + r.copia + '_…").\n\nAgora você já pode importar a planilha atualizada.');
   };
 })();
 </script>
