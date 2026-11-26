@@ -998,6 +998,13 @@ input[type=date]{color-scheme:light}
 
     <div class="page" id="page-dados">
   <div class="page-header"><h2>Dados do sistema</h2></div>
+  <div class="chart-card" style="margin-bottom:16px" id="cardLegado">
+    <div class="chart-title">🔄 Converter dados antigos</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.55">O sistema agora guarda as notas nas abas <strong>NF</strong> e <strong>PARCELAS</strong>. Se a sua planilha ainda tem as abas antigas (uma por ano: 2025, 2026…), use este botão para copiá-las para o novo formato. As abas antigas não são alteradas.</p>
+    <p id="legadoInfo" style="font-size:13px;margin-bottom:10px"></p>
+    <button class="btn btn-primary" onclick="converterLegado()">🔄 Converter abas antigas agora</button>
+    <div id="legadoRes" style="margin-top:12px"></div>
+  </div>
   <div class="chart-card" style="margin-bottom:16px">
     <div class="chart-title">📥 Importar planilha</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.55">Importe uma planilha no <strong>formato atual</strong> (uma linha por NF, colunas A até AY, dados a partir da linha 3, uma aba para cada ano com o nome do ano — 2025, 2026…). As NFs são gravadas junto com todas as parcelas, pagamentos e situações. NFs que já existem (mesmo número e ano) são ignoradas. Fornecedores novos são cadastrados automaticamente.</p>
@@ -4105,6 +4112,38 @@ document.addEventListener('input', function(e){
   window.renderDados = function(){
     const n = (typeof notas !== 'undefined' ? notas.length : 0), p = (typeof notas !== 'undefined' ? notas.reduce((s, x) => s + (x.parcelas || []).length, 0) : 0);
     $('dadosResumo').innerHTML = 'Hoje o sistema tem <strong>' + n + '</strong> nota(s) fiscal(is) e <strong>' + p + '</strong> parcela(s).';
+    apiCall('estadoDados', {}).then(r => {
+      if (!r || !r.ok) return;
+      $('legadoInfo').innerHTML = r.legado && r.legado.length ? '⚠️ Dados antigos encontrados: ' + r.legado.map(x => '<strong>' + esc(x.ano) + '</strong> (' + x.linhas + ' linhas)').join(', ') + '. Ainda não convertidos.' : 'Nenhum dado antigo pendente de conversão.';
+    });
+  };
+  window.converterLegado = async function(){
+    if (!confirm('Converter as abas antigas (2025, 2026…) para o novo formato?\nNotas já existentes no novo formato são ignoradas; as abas antigas não são alteradas.')) return;
+    $('legadoRes').innerHTML = '<div class="notice notice-info" style="display:block">Convertendo… isso pode levar alguns instantes.</div>';
+    const r = await apiCall('migrarLegado', {});
+    if (!r || !r.ok) { $('legadoRes').innerHTML = '<div class="notice notice-warn" style="display:block">' + esc((r && r.erro) || 'Não foi possível converter.') + '</div>'; return; }
+    $('legadoRes').innerHTML = `<div class="notice ${r.erros.length ? 'notice-warn' : 'notice-success'}" style="display:block">✅ <strong>${r.importadas}</strong> NF(s) e <strong>${r.parcelas}</strong> parcela(s) convertidas${r.abas.length ? ' (' + r.abas.map(esc).join(', ') + ')' : ''}. ${r.ignoradas} já existiam. ${r.erros.length ? '<br><strong>' + r.erros.length + ' linha(s) com problema (não convertidas):</strong><br>' + r.erros.slice(0, 30).map(esc).join('<br>') : ''}</div>`;
+    const av = document.getElementById('avisoMigracao'); if (av) av.remove();
+    await atualizarTudo(); renderDados();
+  };
+
+  /* aviso automático quando o sistema está vazio mas existem dados antigos */
+  const _ld = window.loadData;
+  window.loadData = async function(){
+    const r = await _ld.apply(this, arguments);
+    try { if (typeof notas !== 'undefined' && !notas.length && !document.getElementById('avisoMigracao')) {
+      const e = await apiCall('estadoDados', {});
+      if (e && e.ok && e.legado && e.legado.length && !e.nf) {
+        const main = document.querySelector('.main'); if (!main) return r;
+        const div = document.createElement('div'); div.id = 'avisoMigracao'; div.className = 'notice notice-warn'; div.style.cssText = 'display:block;margin-bottom:16px';
+        const txt = e.legado.map(x => x.ano + ': ' + x.linhas + ' linhas').join(', ');
+        div.innerHTML = currentUser && currentUser.isMaster
+          ? '⚠️ <strong>Os dados antigos (' + esc(txt) + ') ainda não foram convertidos para o novo formato.</strong> Por isso não aparecem notas. <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="converterLegado()">🔄 Converter agora</button>'
+          : '⚠️ <strong>Os dados ainda não foram convertidos para o novo formato.</strong> Peça ao Administrador Master para abrir “Dados do sistema” e converter.';
+        main.prepend(div);
+      }
+    } } catch (er) {}
+    return r;
   };
 
   function iso(v){
